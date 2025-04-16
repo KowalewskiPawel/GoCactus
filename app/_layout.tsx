@@ -36,6 +36,20 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="rocket" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="realtime-cactus"
+        options={{
+          title: 'AI Cactus',
+          tabBarIcon: ({ color }) => <TabBarIcon name="comment" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="voice-test"
+        options={{
+          title: 'Voice Test',
+          tabBarIcon: ({ color }) => <TabBarIcon name="microphone" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
