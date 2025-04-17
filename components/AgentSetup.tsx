@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+
+import {Audio} from "expo-av";
 
 interface AgentSetupProps {
   onSave: (agentId: string, apiKey: string) => void;
@@ -12,9 +14,25 @@ interface AgentSetupProps {
 }
 
 export default function AgentSetup({ onSave, defaultAgentId = '', defaultApiKey = '' }: AgentSetupProps) {
-  const [agentId, setAgentId] = useState(defaultAgentId);
+  const [agentId, setAgentId] = useState("");
   const [apiKey, setApiKey] = useState(defaultApiKey);
   const [isEditing, setIsEditing] = useState(!defaultAgentId);
+    const [hasPermission, setHasPermission] = useState<boolean | string | null>(null);
+
+    useEffect(() => {
+      (async () => {
+          const { status } = await Audio.requestPermissionsAsync();
+  
+          setHasPermission(status === "granted");
+      })();
+  }, []);
+  if (hasPermission != "granted") {
+      Alert.alert("Microphone Access", "<your_app> needs microphone access for its main features, but it is upto you to allow.", 
+         [ { text: "No", onPress: () => { console.log("canccel") }} ,
+          { text: "Open Settings", onPress: () => { console.log("go to settings") }}]
+      
+      )
+  }
 
   const handleSave = async () => {
     if (!agentId.trim()) {
