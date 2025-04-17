@@ -16,11 +16,13 @@
   },
   "dependencies": {
     "@11labs/react": "^0.1.3",
+    "@config-plugins/react-native-webrtc": "^10.0.0",
     "@expo/vector-icons": "^14.0.2",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "expo": "~52.0.46",
+    "expo-av": "~15.0.2",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.8",
     "expo-dev-client": "~5.0.20",
@@ -43,10 +45,12 @@
     "react-native-reanimated": "~3.16.1",
     "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
+    "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.13",
+    "react-native-webrtc": "^124.0.5",
+    "react-native-webrtc-web-shim": "^1.0.7",
     "react-native-webview": "13.12.5",
-    "with-rn-bluetooth-classic": "^1.0.5",
-    "expo-av": "~15.0.2"
+    "with-rn-bluetooth-classic": "^1.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
