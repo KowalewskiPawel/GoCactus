@@ -526,8 +526,6 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
         case "response.done":
           addLog("Response complete");
 
-          simulateMultipleClicks(2, 200);
-
           // Check if there's a function call in the output
           if (
             event.response &&
@@ -594,6 +592,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             }
           }
 
+          // simulateMultipleClicks(2, 200);
           setIsSpeaking(false);
           break;
 
@@ -606,6 +605,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
         case "response.audio.done":
         case "output_audio_buffer.stopped":
+          simulateMultipleClicks(2, 200);
           setIsSpeaking(false);
           break;
 
