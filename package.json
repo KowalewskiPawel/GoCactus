@@ -45,7 +45,8 @@
     "react-native-webrtc": "^124.0.5",
     "react-native-webrtc-web-shim": "^1.0.7",
     "react-native-webview": "13.12.5",
-    "with-rn-bluetooth-classic": "^1.0.5"
+    "with-rn-bluetooth-classic": "^1.0.5",
+    "expo-sensors": "~14.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
