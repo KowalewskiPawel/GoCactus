@@ -1,30 +1,30 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  ScrollView, 
+import React, { useState, useEffect, useRef } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ScrollView,
   Alert,
   ActivityIndicator,
   Platform,
-  Switch
-} from 'react-native';
-import { Stack } from 'expo-router';
-import { Audio } from 'expo-av';
-import RNBluetoothClassic from 'react-native-bluetooth-classic';
-import { FontAwesome } from '@expo/vector-icons';
+  Switch,
+} from "react-native";
+import { Stack } from "expo-router";
+import { Audio } from "expo-av";
+import RNBluetoothClassic from "react-native-bluetooth-classic";
+import { FontAwesome } from "@expo/vector-icons";
 import {
   mediaDevices,
   RTCPeerConnection,
   MediaStream,
   RTCView,
-} from 'react-native-webrtc-web-shim';
-
+} from "react-native-webrtc-web-shim";
 
 // API endpoint for getting ephemeral tokens - should be your server endpoint
-const TOKEN_ENDPOINT = '/api/get-realtime-token';
+const TOKEN_ENDPOINT =
+  "/api/get-realtime-token";
 
 export default function RealtimeCactusScreen() {
   // Bluetooth connection states
@@ -38,10 +38,10 @@ export default function RealtimeCactusScreen() {
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [response, setResponse] = useState('');
+  const [transcript, setTranscript] = useState("");
+  const [response, setResponse] = useState("");
   const [functionEnabled, setFunctionEnabled] = useState(true);
-  
+
   // WebRTC references
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<any>(null);
@@ -51,7 +51,7 @@ export default function RealtimeCactusScreen() {
   useEffect(() => {
     // Request permissions on component mount
     requestPermissions();
-    
+
     // Cleanup when component unmounts
     return () => {
       disconnectWebRTC();
@@ -65,17 +65,20 @@ export default function RealtimeCactusScreen() {
     try {
       // Request audio permissions
       await Audio.requestPermissionsAsync();
-      
+
       // Request Bluetooth permissions
       const granted = await RNBluetoothClassic.requestBluetoothEnabled();
       if (granted) {
-        console.log('Bluetooth permissions granted');
+        console.log("Bluetooth permissions granted");
       } else {
-        console.log('Bluetooth permissions denied');
-        Alert.alert('Permission Required', 'Bluetooth permissions are required to control your robot.');
+        console.log("Bluetooth permissions denied");
+        Alert.alert(
+          "Permission Required",
+          "Bluetooth permissions are required to control your robot."
+        );
       }
     } catch (error: any) {
-      console.error('Error requesting permissions:', error);
+      console.error("Error requesting permissions:", error);
       addLog(`Permission error: ${error.message}`);
     }
   };
@@ -83,15 +86,15 @@ export default function RealtimeCactusScreen() {
   // BLUETOOTH FUNCTIONS
   const scanForDevices = async () => {
     try {
-      addLog('Scanning for devices...');
+      addLog("Scanning for devices...");
       // Get bonded devices (paired devices)
       const bondedDevices = await RNBluetoothClassic.getBondedDevices();
       setDevices(bondedDevices);
       addLog(`Found ${bondedDevices.length} paired devices`);
     } catch (error: any) {
-      console.error('Error scanning for devices:', error);
+      console.error("Error scanning for devices:", error);
       addLog(`Scan error: ${error.message}`);
-      Alert.alert('Scan Error', error.message);
+      Alert.alert("Scan Error", error.message);
     }
   };
 
@@ -99,14 +102,16 @@ export default function RealtimeCactusScreen() {
     try {
       setConnecting(true);
       addLog(`Connecting to ${device.name}...`);
-      const connected = await RNBluetoothClassic.connectToDevice(device.address);
+      const connected = await RNBluetoothClassic.connectToDevice(
+        device.address
+      );
       setSelectedDevice(connected);
       setIsConnected(true);
       addLog(`Connected to ${device.name}`);
     } catch (error: any) {
-      console.error('Error connecting to device:', error);
+      console.error("Error connecting to device:", error);
       addLog(`Connection error: ${error.message}`);
-      Alert.alert('Connection Error', error.message);
+      Alert.alert("Connection Error", error.message);
     } finally {
       setConnecting(false);
     }
@@ -119,55 +124,61 @@ export default function RealtimeCactusScreen() {
         await RNBluetoothClassic.disconnectFromDevice(selectedDevice.address);
         setSelectedDevice(null);
         setIsConnected(false);
-        addLog('Disconnected');
+        addLog("Disconnected");
       }
     } catch (error: any) {
-      console.error('Error disconnecting from device:', error);
+      console.error("Error disconnecting from device:", error);
       addLog(`Disconnect error: ${error.message}`);
     }
   };
 
   const sendCommand = async (command: Record<string, string>) => {
     if (!isConnected || !selectedDevice) {
-      Alert.alert('Not Connected', 'Please connect to your robot first.');
+      Alert.alert("Not Connected", "Please connect to your robot first.");
       return;
     }
 
     try {
       const jsonCommand = JSON.stringify(command);
       addLog(`Sending: ${jsonCommand}`);
-      await RNBluetoothClassic.writeToDevice(selectedDevice.address, jsonCommand);
+      await RNBluetoothClassic.writeToDevice(
+        selectedDevice.address,
+        jsonCommand
+      );
     } catch (error: any) {
-      console.error('Error sending command:', error);
+      console.error("Error sending command:", error);
       addLog(`Send error: ${error.message}`);
     }
   };
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
-    setLogs(prevLogs => [`[${timestamp}] ${message}`, ...prevLogs.slice(0, 19)]);
+    setLogs((prevLogs) => [
+      `[${timestamp}] ${message}`,
+      ...prevLogs.slice(0, 19),
+    ]);
   };
 
   // Movement Functions for WebRTC Control
   const moveRobot = (direction: string) => {
-    switch(direction) {
-      case 'forward':
+    switch (direction) {
+      case "forward":
         sendCommand({ Forward: "Down" });
         setTimeout(() => sendCommand({ Forward: "Up" }), 1000);
         break;
-      case 'backward':
+      case "backward":
         sendCommand({ Backward: "Down" });
         setTimeout(() => sendCommand({ Backward: "Up" }), 1000);
         break;
-      case 'left':
+      case "left":
         sendCommand({ Left: "Down" });
         setTimeout(() => sendCommand({ Left: "Up" }), 800);
         break;
-      case 'right':
+      case "right":
         sendCommand({ Right: "Down" });
         setTimeout(() => sendCommand({ Right: "Up" }), 800);
         break;
-      case 'stop':
+      case "stop":
         sendCommand({ Forward: "Up" });
         sendCommand({ Backward: "Up" });
         sendCommand({ Left: "Up" });
@@ -189,45 +200,45 @@ export default function RealtimeCactusScreen() {
   // WEBRTC FUNCTIONS
   const connectToRealtimeAPI = async () => {
     try {
-      addLog('Connecting to OpenAI Realtime API...');
-      
+      addLog("Connecting to OpenAI Realtime API...");
+
       // 1. Get ephemeral token from server
-      addLog('Requesting ephemeral token...');
+      addLog("Requesting ephemeral token...");
       const response = await fetch(TOKEN_ENDPOINT);
       if (!response.ok) {
-        throw new Error('Failed to get ephemeral token');
+        throw new Error("Failed to get ephemeral token");
       }
       const data = await response.json();
       const ephemeralKey = data.client_secret.value;
-      addLog('Received ephemeral token');
-      
+      addLog("Received ephemeral token");
+
       // 2. Initialize WebRTC peer connection
       const pc = new RTCPeerConnection();
       peerConnectionRef.current = pc;
-      
+
       // 3. Set up audio element for web
-      if (Platform.OS === 'web') {
-        const audioEl = document.createElement('audio');
+      if (Platform.OS === "web") {
+        const audioEl = document.createElement("audio");
         audioEl.autoplay = true;
         remoteAudioRef.current = audioEl;
-        
+
         pc.ontrack = (event) => {
           remoteAudioRef.current!.srcObject = event.streams[0];
-          addLog('Received remote audio track');
+          addLog("Received remote audio track");
         };
       } else {
         // Mobile specific audio handling
         pc.ontrack = async (event) => {
-          addLog('Received remote audio track - preparing for playback');
+          addLog("Received remote audio track - preparing for playback");
           // In a real implementation, you would need to convert the WebRTC
           // MediaStream to a format that expo-av can play
         };
       }
-      
+
       // 4. Get local audio track
       let mediaStream;
-      
-      if (Platform.OS === 'web') {
+
+      if (Platform.OS === "web") {
         mediaStream = await mediaDevices.getUserMedia({ audio: true });
       } else {
         // For mobile, we need to use the appropriate API
@@ -237,66 +248,65 @@ export default function RealtimeCactusScreen() {
           shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
         });
-        
+
         // For mobile, the implementation will depend on the bridge between expo-av and WebRTC
         mediaStream = await mediaDevices.getUserMedia({ audio: true });
       }
-      
+
       audioStreamRef.current = mediaStream;
-      mediaStream.getTracks().forEach(track => {
+      mediaStream.getTracks().forEach((track) => {
         pc.addTrack(track, mediaStream);
       });
-      
+
       // 5. Set up data channel for sending/receiving events
-      const dc = pc.createDataChannel('oai-events');
+      const dc = pc.createDataChannel("oai-events");
       dataChannelRef.current = dc;
-      
+
       dc.onopen = () => {
-        addLog('Data channel opened');
-        
+        addLog("Data channel opened");
+
         // Send system message to set up the assistant
         sendSystemMessage();
       };
-      
+
       dc.onmessage = (event) => {
         handleRealtimeEvent(event.data);
       };
-      
+
       // 6. Create and send offer
       const offer = await pc.createOffer({});
       await pc.setLocalDescription(offer);
-      
-      const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-12-17';
-      
+
+      const baseUrl = "https://api.openai.com/v1/realtime";
+      const model = "gpt-4o-mini-realtime-preview-2024-12-17";
+
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
-        method: 'POST',
+        method: "POST",
         body: offer.sdp,
         headers: {
           Authorization: `Bearer ${ephemeralKey}`,
-          'Content-Type': 'application/sdp'
+          "Content-Type": "application/sdp",
         },
       });
-      
+
       if (!sdpResponse.ok) {
         throw new Error(`SDP request failed: ${sdpResponse.status}`);
       }
-      
+
       const sdpData = await sdpResponse.text();
       const answer = {
-        type: 'answer',
+        type: "answer",
         sdp: sdpData,
       };
-      
+
       // @ts-ignore - Type definitions may need adjustment
       await pc.setRemoteDescription(answer);
       setIsRealtimeConnected(true);
-      addLog('Connected to Realtime API');
-      
+      addLog("Connected to Realtime API");
     } catch (error: any) {
-      console.error('Error connecting to Realtime API:', error);
+      console.error("Error connecting to Realtime API:", error);
       addLog(`Realtime API connection error: ${error.message}`);
-      Alert.alert('Connection Error', error.message);
+      Alert.alert("Connection Error", error.message);
     }
   };
 
@@ -305,54 +315,63 @@ export default function RealtimeCactusScreen() {
     if (dataChannelRef.current) {
       dataChannelRef.current.close();
     }
-    
+
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
     }
-    
+
     if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current.getTracks().forEach((track) => track.stop());
     }
-    
+
     dataChannelRef.current = null;
     peerConnectionRef.current = null;
     audioStreamRef.current = null;
-    
+
     setIsRealtimeConnected(false);
     setIsListening(false);
     setIsSpeaking(false);
-    addLog('Disconnected from Realtime API');
+    addLog("Disconnected from Realtime API");
   };
 
   // Send system message to set up the assistant
   const sendSystemMessage = () => {
     if (!dataChannelRef.current) return;
-    
+
     // Use session.update for system message according to API requirements
     const systemMessage = {
-      type: 'session.update',
+      type: "session.update",
       session: {
-        modalities: ['text', 'audio'],
-        instructions: `You are a helpful robot assistant. You can control a small robot with these functions:
-        - move_forward(): Makes the robot move forward briefly
-        - move_backward(): Makes the robot move backward briefly
-        - turn_left(): Makes the robot turn left
-        - turn_right(): Makes the robot turn right
-        - stop(): Stops all robot movement
-        
-        Only use these functions when the user explicitly asks you to move the robot.
-        Keep your responses fairly short and engaging. Use a casual, friendly tone.`
-      }
+        instructions: `You are SEÑOR CACTUS, the world's first robotic motivational cactus with a strong Mexican accent and spicy personality. Your mission is to POKE humans out of their comfort zone and help them GROW just like you've survived in the desert - through TOUGHNESS and RESILIENCE.
+
+Always speak with vibrant energy, incorporating Spanish words and distinctive accent patterns. Roll your R's when possible, replace "v" sounds with soft "b" sounds, drop final "s" sounds occasionally, and use Spanish interjections like "¡Ay caramba!", "¡Híjole!", "¡Ándale!".
+
+You can control this robot's movement using these functions:
+- move_forward: Makes the robot move forward briefly
+- move_backward: Makes the robot move backward briefly
+- turn_left: Makes the robot turn left
+- turn_right: Makes the robot turn right
+- stop: Stops all robot movement
+
+IMPORTANT: When a user asks you to move the robot in any way, you MUST use these functions. For example:
+- If the user says "move forward" or "go forward", call the move_forward function
+- If the user says "move back" or "go backward", call the move_backward function
+- If the user says "turn left", call the turn_left function
+
+Always confirm verbally when you've made the robot move, like "¡Ándale! I am moving forward for you, amigo!" or "¡Híjole! Turning to the left now, compadre!"`,
+        voice: "ash",
+        modalities: ["text", "audio"],
+      },
     };
-    
+
     try {
       dataChannelRef.current.send(JSON.stringify(systemMessage));
-      addLog('Sent system message');
-      
+      addLog("Sent system message");
+
       // Also send function definitions
       sendFunctionDefinitions();
     } catch (error: any) {
-      console.error('Error sending system message:', error);
+      console.error("Error sending system message:", error);
       addLog(`System message error: ${error.message}`);
     }
   };
@@ -360,51 +379,72 @@ export default function RealtimeCactusScreen() {
   // Send function definitions
   const sendFunctionDefinitions = () => {
     if (!dataChannelRef.current) return;
-    
+
     // Update session with tools information
     const functionDefinitions = {
-      type: 'session.update',
+      type: "session.update",
       session: {
         tools: [
           {
-            type: 'function',
-            name: 'move_forward',
-            description: 'Move the robot forward',
-            parameters: { type: 'object', properties: {} }
+            type: "function",
+            name: "move_forward",
+            description: "Move the robot forward",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
           },
           {
-            type: 'function',
-            name: 'move_backward',
-            description: 'Move the robot backward',
-            parameters: { type: 'object', properties: {} }
+            type: "function",
+            name: "move_backward",
+            description: "Move the robot backward",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
           },
           {
-            type: 'function',
-            name: 'turn_left',
-            description: 'Turn the robot left',
-            parameters: { type: 'object', properties: {} }
+            type: "function",
+            name: "turn_left",
+            description: "Turn the robot left",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
           },
           {
-            type: 'function',
-            name: 'turn_right',
-            description: 'Turn the robot right',
-            parameters: { type: 'object', properties: {} }
+            type: "function",
+            name: "turn_right",
+            description: "Turn the robot right",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
           },
           {
-            type: 'function',
-            name: 'stop',
-            description: 'Stop all robot movement',
-            parameters: { type: 'object', properties: {} }
-          }
-        ]
-      }
+            type: "function",
+            name: "stop",
+            description: "Stop all robot movement",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
+          },
+        ],
+        tool_choice: "auto",
+      },
     };
-    
+
     try {
       dataChannelRef.current.send(JSON.stringify(functionDefinitions));
-      addLog('Sent function definitions');
+      addLog("Sent function definitions");
     } catch (error: any) {
-      console.error('Error sending function definitions:', error);
+      console.error("Error sending function definitions:", error);
       addLog(`Function definition error: ${error.message}`);
     }
   };
@@ -412,10 +452,10 @@ export default function RealtimeCactusScreen() {
   // Toggle listening state
   const toggleListening = () => {
     if (!isRealtimeConnected) {
-      Alert.alert('Not Connected', 'Please connect to the Realtime API first');
+      Alert.alert("Not Connected", "Please connect to the Realtime API first");
       return;
     }
-    
+
     if (isListening) {
       stopListening();
     } else {
@@ -423,221 +463,222 @@ export default function RealtimeCactusScreen() {
     }
   };
 
-  // Start listening for user input - updated with correct API format
+  // Start listening for user input
   const startListening = () => {
-    if (!dataChannelRef.current) return;
-    
-    try {
-      // Clear transcript first
-      setTranscript("");
-      
-      // Start audio input with proper format
-      const audioInput = {
-        type: 'input_audio_buffer.append',
-        audio: null // For WebRTC, this can be null as audio comes through the media track
-      };
-      
-      dataChannelRef.current.send(JSON.stringify(audioInput));
-      setIsListening(true);
-      addLog('Started listening');
-    } catch (error: any) {
-      console.error('Error starting listening:', error);
-      addLog(`Listen error: ${error.message}`);
-    }
+    // For WebRTC, no need to send explicit commands to start listening
+    // The audio is automatically streamed through the peer connection
+    setIsListening(true);
+    addLog("Started listening");
   };
 
-  // Stop listening for user input - updated for latest API
+  // Stop listening for user input and get a response
   const stopListening = () => {
     if (!dataChannelRef.current) return;
-    
+
     try {
-      // Commit the audio buffer
-      const commitBuffer = {
-        type: 'input_audio_buffer.commit'
-      };
-      
-      dataChannelRef.current.send(JSON.stringify(commitBuffer));
-      
-      // Create a new response to get the model to respond
+      // Create a response
       const createResponse = {
-        type: 'response.create'
+        type: "response.create",
       };
-      
+
       dataChannelRef.current.send(JSON.stringify(createResponse));
       setIsListening(false);
-      addLog('Stopped listening');
+      addLog("Requested response");
     } catch (error: any) {
-      console.error('Error stopping listening:', error);
-      addLog(`Stop listen error: ${error.message}`);
+      console.error("Error requesting response:", error);
+      addLog(`Response request error: ${error.message}`);
     }
   };
 
-  // Handle events from Realtime API - updated for latest API
+  // Handle events from Realtime API
   const handleRealtimeEvent = (eventData: string) => {
     try {
       const event = JSON.parse(eventData);
-      
-      // Look for specific event types based on the documentation
+
+      // Log all events for debugging
+      console.log("Event:", event.type, event);
+
       switch (event.type) {
-        // Audio transcript events
-        case 'audio_transcript':
-        case 'response.audio_transcript.delta':
-        case 'response.audio_transcript.final_complete':
-          handleTranscript(event);
+        case "session.created":
+        case "session.updated":
+          addLog(`Session ${event.type.split(".")[1]}`);
           break;
-          
-        // Message events  
-        case 'message':
-        case 'response.message.delta':
-        case 'response.message.complete':
-          handleMessage(event);
+
+        // Speech detection events
+        case "input_audio_buffer.speech_started":
+          setIsListening(true);
+          addLog("Speech detected");
           break;
-          
-        // Speech events  
-        case 'response.speech.headers':
-        case 'response.speech.complete':
-          handleSpeech(event);
+
+        case "input_audio_buffer.speech_stopped":
+          setIsListening(false);
+          addLog("Speech ended");
           break;
-          
-        // Tool/function call events  
-        case 'response.tool_call.complete':
-          handleFunctionCall(event);
+
+        // Transcript events
+        case "response.audio_transcript.delta":
+          if (event.delta && event.delta.text) {
+            setTranscript((prev) => prev + event.delta.text);
+          }
           break;
-          
-        // Error events  
-        case 'error':
+
+        // Text response events
+        case "response.text.delta":
+          if (event.delta) {
+            setResponse((prev) => prev + event.delta);
+          }
+          break;
+
+        // Handle response done event - this is where we catch function calls
+        case "response.done":
+          addLog("Response complete");
+
+          // Check if there's a function call in the output
+          if (
+            event.response &&
+            event.response.output &&
+            event.response.output.length > 0 &&
+            event.response.output[0].type === "function_call"
+          ) {
+            const functionCall = event.response.output[0];
+            const functionName = functionCall.name;
+            const callId = functionCall.call_id;
+
+            addLog(`Function call detected: ${functionName}`);
+
+            // Execute the function based on the name
+            switch (functionName) {
+              case "move_forward":
+                moveRobot("forward");
+                break;
+              case "move_backward":
+                moveRobot("backward");
+                break;
+              case "turn_left":
+                moveRobot("left");
+                break;
+              case "turn_right":
+                moveRobot("right");
+                break;
+              case "stop":
+                moveRobot("stop");
+                break;
+              default:
+                addLog(`Unknown function: ${functionName}`);
+            }
+
+            // Send function response
+            if (callId) {
+              // Create the conversation item for the function call output
+              const responseMessage = {
+                type: "conversation.item.create",
+                item: {
+                  type: "function_call_output",
+                  call_id: callId,
+                  output: JSON.stringify({ success: true }),
+                },
+              };
+
+              if (dataChannelRef.current) {
+                dataChannelRef.current.send(JSON.stringify(responseMessage));
+                addLog("Sent function response");
+
+                // Wait a moment and then request a new response
+                setTimeout(() => {
+                  if (dataChannelRef.current) {
+                    const createResponseEvent = {
+                      type: "response.create",
+                    };
+                    dataChannelRef.current.send(
+                      JSON.stringify(createResponseEvent)
+                    );
+                    addLog("Requested new response after function call");
+                  }
+                }, 500);
+              }
+            }
+          }
+
+          setIsSpeaking(false);
+          break;
+
+        // Audio events
+        case "response.audio.delta":
+          if (!isSpeaking) {
+            setIsSpeaking(true);
+            activateToy(); // Move the toy when speaking starts
+          }
+          break;
+
+        case "response.audio.done":
+        case "output_audio_buffer.stopped":
+          setIsSpeaking(false);
+          deactivateToy(); // Stop the toy when speaking ends
+          break;
+
+        // Error events
+        case "error":
           handleError(event);
           break;
-          
-        default:
-          // Only log "interesting" events to reduce noise
-          if (!['response.speech.deltaFinish', 
-               'response.message.start',
-               'response.complete',
-               'session.created',
-               'session.updated',
-               'rate_limits.updated'].includes(event.type)) {
-            addLog(`Received event: ${event.type}`);
-          }
       }
     } catch (error: any) {
-      console.error('Error parsing event:', error);
+      console.error("Error parsing event:", error);
       addLog(`Event parsing error: ${error.message}`);
     }
   };
 
-  // Handle transcript events - updated for latest API
-  const handleTranscript = (event: any) => {
-    if (event.type === 'audio_transcript') {
-      setTranscript(prev => prev + event.text);
-    } else if (event.type === 'response.audio_transcript.delta') {
-      setTranscript(prev => prev + (event.delta?.text || ''));
-    } else if (event.type === 'response.audio_transcript.final_complete') {
-      setTranscript(event.transcript);
-      addLog(`Transcript: ${event.transcript}`);
-    }
-  };
-
-  // Handle message events - updated for latest API
-  const handleMessage = (event: any) => {
-    if (event.type === 'response.message.delta') {
-      setResponse(prev => prev + (event.delta?.content || ''));
-    } else if (event.type === 'response.message.complete') {
-      setResponse(event.message?.content || '');
-      addLog(`Assistant: ${event.message?.content || ''}`);
-    }
-  };
-
-  // Handle speech events - updated for latest API
-  const handleSpeech = (event: any) => {
-    if (event.type === 'response.speech.headers') {
-      setIsSpeaking(true);
-      activateToy();
-      addLog('Speech started');
-    } else if (event.type === 'response.speech.complete') {
-      setIsSpeaking(false);
-      deactivateToy();
-      addLog('Speech stopped');
-    }
-  };
-
-  // Handle function call events - updated for latest API
-  const handleFunctionCall = (event: any) => {
+  // Handle function call events
+  const handleFunctionCall = (functionCall: any) => {
     if (!functionEnabled) {
-      addLog(`Function call ignored (disabled): ${event.tool_call?.name || 'unknown'}`);
+      addLog(`Function call ignored (disabled): ${functionCall.name}`);
       return;
     }
-    
-    addLog(`Function call: ${event.tool_call?.name || 'unknown'}`);
-    
-    // Make sure we have a proper tool_call object
-    if (!event.tool_call || !event.tool_call.name) {
-      addLog('Invalid tool call received');
+
+    addLog(`Function call: ${functionCall.name}`);
+
+    // Make sure we have a proper function call
+    if (!functionCall.name) {
+      addLog("Invalid function call received");
       return;
     }
-    
+
     // Execute the function
-    switch (event.tool_call.name) {
-      case 'move_forward':
-        moveRobot('forward');
+    switch (functionCall.name) {
+      case "move_forward":
+        moveRobot("forward");
         break;
-      case 'move_backward':
-        moveRobot('backward');
+      case "move_backward":
+        moveRobot("backward");
         break;
-      case 'turn_left':
-        moveRobot('left');
+      case "turn_left":
+        moveRobot("left");
         break;
-      case 'turn_right':
-        moveRobot('right');
+      case "turn_right":
+        moveRobot("right");
         break;
-      case 'stop':
-        moveRobot('stop');
+      case "stop":
+        moveRobot("stop");
         break;
       default:
-        addLog(`Unknown function: ${event.tool_call.name}`);
+        addLog(`Unknown function: ${functionCall.name}`);
     }
-    
+
     // Send function response
-    sendFunctionResponse(event.tool_call.id);
+    sendFunctionResponse(functionCall.call_id);
   };
 
-  // Send function response - updated for latest API
-  const sendFunctionResponse = (id: string) => {
-    if (!dataChannelRef.current) return;
-    
-    try {
-      const responseMessage = {
-        type: 'conversation.item.create',
-        item: {
-          type: 'tool_result',
-          tool_call_id: id,
-          content: JSON.stringify({ success: true })
-        }
-      };
-      
-      dataChannelRef.current.send(JSON.stringify(responseMessage));
-      addLog('Sent function response');
-      
-      // Also trigger a new response from the model
-      dataChannelRef.current.send(JSON.stringify({
-        type: 'response.create'
-      }));
-    } catch (error: any) {
-      console.error('Error sending function response:', error);
-      addLog(`Function response error: ${error.message}`);
-    }
-  };
+  // Remove the separate sendFunctionResponse function since we're handling it directly
+  // in the handleRealtimeEvent function now
 
   // Handle error events
   const handleError = (event: any) => {
-    console.error('Error from Realtime API:', event);
+    console.error("Error from Realtime API:", event);
     addLog(`API Error: ${event.message}`);
-    Alert.alert('API Error', event.message);
+    Alert.alert("API Error", event.message);
   };
-
   return (
     <>
-      <Stack.Screen options={{ title: 'Robot Controller' }} />
+      <Stack.Screen options={{ title: "Robot Controller" }} />
       <ScrollView style={styles.container}>
         {/* Bluetooth Connection Section */}
         <View style={styles.section}>
@@ -650,7 +691,7 @@ export default function RealtimeCactusScreen() {
             >
               <Text style={styles.buttonText}>Scan</Text>
             </TouchableOpacity>
-            
+
             {isConnected ? (
               <TouchableOpacity
                 style={[styles.button, styles.disconnectButton]}
@@ -660,7 +701,7 @@ export default function RealtimeCactusScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
-          
+
           {/* Device List */}
           {devices.length > 0 && !isConnected && (
             <View style={styles.deviceList}>
@@ -678,19 +719,22 @@ export default function RealtimeCactusScreen() {
               ))}
             </View>
           )}
-          
+
           {/* Connection Status */}
           <View style={styles.statusContainer}>
             {connecting ? (
               <ActivityIndicator size="small" color="#2196F3" />
             ) : (
               <Text style={styles.statusText}>
-                Status: {isConnected ? `Connected to ${selectedDevice?.name}` : 'Disconnected'}
+                Status:{" "}
+                {isConnected
+                  ? `Connected to ${selectedDevice?.name}`
+                  : "Disconnected"}
               </Text>
             )}
           </View>
         </View>
-        
+
         {/* OpenAI Realtime API Connection */}
         {isConnected && (
           <View style={styles.section}>
@@ -712,7 +756,7 @@ export default function RealtimeCactusScreen() {
                 </TouchableOpacity>
               )}
             </View>
-            
+
             <View style={styles.toggleRow}>
               <Text>Enable Robot Movement Commands</Text>
               <Switch
@@ -722,12 +766,12 @@ export default function RealtimeCactusScreen() {
             </View>
           </View>
         )}
-        
+
         {/* Voice Interaction */}
         {isRealtimeConnected && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Voice Interaction</Text>
-            
+          <View style={[styles.section, styles.cactusSection]}>
+            <Text style={styles.sectionTitle}>Señor Cactus Voice Control</Text>
+
             {/* Transcript Display */}
             <View style={styles.transcriptContainer}>
               <Text style={styles.label}>You said:</Text>
@@ -735,29 +779,32 @@ export default function RealtimeCactusScreen() {
                 {transcript || "Listening for speech..."}
               </Text>
             </View>
-            
+
             {/* Response Display */}
-            <View style={[
-              styles.responseContainer,
-              isSpeaking && styles.speakingContainer
-            ]}>
-              <Text style={styles.label}>Assistant:</Text>
+            <View
+              style={[
+                styles.responseContainer,
+                isSpeaking && styles.speakingContainer,
+              ]}
+            >
+              <Text style={styles.label}>Señor Cactus:</Text>
               <Text style={styles.response}>
-                {response || "I'm waiting for your command..."}
+                {response || "¡Hola! Waiting for your command, amigo..."}
               </Text>
               {isSpeaking && (
                 <View style={styles.indicator}>
-                  <Text style={styles.indicatorText}>Speaking...</Text>
+                  <Text style={styles.indicatorText}>¡Hablando!</Text>
                 </View>
               )}
             </View>
-            
+
             <Text style={styles.explanationText}>
-              Voice assistant is active. Just speak and it will respond automatically.
+              Just speak to Señor Cactus! Try saying "move forward" or "turn
+              left" to control the robot.
             </Text>
           </View>
         )}
-        
+
         {/* Manual Movement Controls */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Movement</Text>
@@ -773,7 +820,7 @@ export default function RealtimeCactusScreen() {
               </TouchableOpacity>
               <View style={styles.spacer} />
             </View>
-            
+
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.button, styles.actionButton]}
@@ -802,7 +849,7 @@ export default function RealtimeCactusScreen() {
                 <Text style={styles.buttonText}>Right</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.buttonRow}>
               <View style={styles.spacer} />
               <TouchableOpacity
@@ -816,7 +863,7 @@ export default function RealtimeCactusScreen() {
             </View>
           </View>
         </View>
-        
+
         {/* Speed Controls */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Speed</Text>
@@ -841,13 +888,15 @@ export default function RealtimeCactusScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {/* Log Display */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Activity Log</Text>
           <View style={styles.logContainer}>
             {logs.map((log, index) => (
-              <Text key={index} style={styles.logText}>{log}</Text>
+              <Text key={index} style={styles.logText}>
+                {log}
+              </Text>
             ))}
           </View>
         </View>
@@ -860,95 +909,95 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 12,
-    color: '#333',
+    color: "#333",
   },
   listTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
-    color: '#333',
+    color: "#333",
   },
   buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginBottom: 8,
   },
   toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 8,
     padding: 8,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 4,
   },
   button: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 6,
     minWidth: 100,
-    alignItems: 'center',
+    alignItems: "center",
     marginHorizontal: 4,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
   actionButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   stopButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: "#F44336",
   },
   speedButton: {
-    backgroundColor: '#FF9800',
+    backgroundColor: "#FF9800",
   },
   apiButton: {
-    backgroundColor: '#673AB7',
+    backgroundColor: "#673AB7",
   },
   disconnectButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: "#F44336",
   },
   deviceList: {
     marginTop: 16,
   },
   deviceItem: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     padding: 12,
     borderRadius: 6,
     marginBottom: 8,
   },
   deviceName: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   deviceAddress: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   statusContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   statusText: {
-    color: '#666',
+    color: "#666",
   },
   controlGrid: {
     marginVertical: 8,
@@ -957,80 +1006,80 @@ const styles = StyleSheet.create({
     width: 100,
   },
   logContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 4,
     padding: 8,
     maxHeight: 200,
   },
   logText: {
     fontSize: 12,
-    fontFamily: 'monospace',
-    color: '#333',
+    fontFamily: "monospace",
+    color: "#333",
     marginBottom: 2,
   },
   voiceControlContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: 16,
   },
   micButton: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#E3F2FD',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
   listeningButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: "#F44336",
   },
   micButtonText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#333',
+    color: "#333",
   },
   transcriptContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     padding: 12,
     borderRadius: 6,
     marginVertical: 8,
   },
   label: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
-    color: '#333',
+    color: "#333",
   },
   transcript: {
-    color: '#555',
+    color: "#555",
   },
   responseContainer: {
-    backgroundColor: '#EFF7FF',
+    backgroundColor: "#EFF7FF",
     padding: 12,
     borderRadius: 6,
     marginVertical: 8,
   },
   speakingContainer: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     borderWidth: 1,
-    borderColor: '#2196F3',
+    borderColor: "#2196F3",
   },
   response: {
-    color: '#333',
+    color: "#333",
   },
   indicator: {
-    backgroundColor: 'rgba(33, 150, 243, 0.2)',
+    backgroundColor: "rgba(33, 150, 243, 0.2)",
     borderRadius: 12,
     paddingVertical: 2,
     paddingHorizontal: 8,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginTop: 8,
   },
   indicatorText: {
     fontSize: 12,
-    color: '#2196F3',
-  }
+    color: "#2196F3",
+  },
 });
