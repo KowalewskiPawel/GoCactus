@@ -15,6 +15,7 @@ import { Stack } from "expo-router";
 import { Audio } from "expo-av";
 import RNBluetoothClassic from "react-native-bluetooth-classic";
 import { FontAwesome } from "@expo/vector-icons";
+import { MultiClickButton } from './MultiClickButton';
 import {
   mediaDevices,
   RTCPeerConnection,
@@ -48,6 +49,7 @@ export default function RealtimeCactusScreen() {
   const audioStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Cleanup function to ensure interval is cleared when component unmounts
   useEffect(() => {
     // Request permissions on component mount
     requestPermissions();
@@ -187,16 +189,6 @@ export default function RealtimeCactusScreen() {
     }
   };
 
-  // Function to activate any GPIO-connected component
-  const activateToy = () => {
-    sendCommand({ ToyGPIO15: "on" });
-  };
-
-  // Function to deactivate
-  const deactivateToy = () => {
-    sendCommand({ ToyGPIO15: "off" });
-  };
-
   // WEBRTC FUNCTIONS
   const connectToRealtimeAPI = async () => {
     try {
@@ -278,7 +270,7 @@ export default function RealtimeCactusScreen() {
       await pc.setLocalDescription(offer);
 
       const baseUrl = "https://api.openai.com/v1/realtime";
-      const model = "gpt-4o-mini-realtime-preview-2024-12-17";
+      const model = "gpt-4o-mini-realtime-preview";
 
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: "POST",
@@ -358,7 +350,7 @@ IMPORTANT: When a user asks you to move the robot in any way, you MUST use these
 - If the user says "move back" or "go backward", call the move_backward function
 - If the user says "turn left", call the turn_left function
 
-Always confirm verbally when you've made the robot move, like "¡Ándale! I am moving forward for you, amigo!" or "¡Híjole! Turning to the left now, compadre!"`,
+Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like "¡Ándale! I am moving forward for you, amigo!" or "¡Híjole! Turning to the left now, compadre!"`,
         voice: "ash",
         modalities: ["text", "audio"],
       },
@@ -520,6 +512,7 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
           if (event.delta && event.delta.text) {
             setTranscript((prev) => prev + event.delta.text);
           }
+          simulateMultipleClicks(3, 150);
           break;
 
         // Text response events
@@ -532,6 +525,8 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
         // Handle response done event - this is where we catch function calls
         case "response.done":
           addLog("Response complete");
+
+          simulateMultipleClicks(2, 200);
 
           // Check if there's a function call in the output
           if (
@@ -606,14 +601,12 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
         case "response.audio.delta":
           if (!isSpeaking) {
             setIsSpeaking(true);
-            activateToy(); // Move the toy when speaking starts
           }
           break;
 
         case "response.audio.done":
         case "output_audio_buffer.stopped":
           setIsSpeaking(false);
-          deactivateToy(); // Stop the toy when speaking ends
           break;
 
         // Error events
@@ -676,13 +669,49 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
     addLog(`API Error: ${event.message}`);
     Alert.alert("API Error", event.message);
   };
+
+  const simulateMultipleClicks = async (clickCount = 3, delay = 150) => {
+    if (!isConnected || !selectedDevice) {
+      Alert.alert("Not Connected", "Please connect to your robot first.");
+      return;
+    }
+
+    addLog(`Simulating ${clickCount} quick clicks on toy...`);
+
+    // Function to send a single click (on then off)
+    const sendClick = async () => {
+      try {
+        await sendCommand({ ToyGPIO15: "on" });
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Duration of "press"
+        await sendCommand({ ToyGPIO15: "off" });
+      } catch (error) {
+        console.error("Error during click:", error);
+      }
+    };
+
+    try {
+      // Send sequence of clicks with delays between them
+      for (let i = 0; i < clickCount; i++) {
+        await sendClick();
+        if (i < clickCount - 1) {
+          // Wait between clicks (but not after the last one)
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+      addLog(`Completed ${clickCount} clicks sequence`);
+    } catch (error) {
+      console.error("Error in click sequence:", error);
+      addLog(`Click sequence error: ${error.message}`);
+    }
+  };
+
   return (
     <>
       <Stack.Screen options={{ title: "Robot Controller" }} />
       <ScrollView style={styles.container}>
-        {/* Bluetooth Connection Section */}
+        {/* Connection Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bluetooth Connection</Text>
+          <Text style={styles.sectionTitle}>Connection</Text>
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={styles.button}
@@ -691,7 +720,7 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
             >
               <Text style={styles.buttonText}>Scan</Text>
             </TouchableOpacity>
-
+            
             {isConnected ? (
               <TouchableOpacity
                 style={[styles.button, styles.disconnectButton]}
@@ -701,11 +730,11 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
               </TouchableOpacity>
             ) : null}
           </View>
-
+          
           {/* Device List */}
           {devices.length > 0 && !isConnected && (
             <View style={styles.deviceList}>
-              <Text style={styles.listTitle}>Select a device:</Text>
+              <Text style={styles.sectionTitle}>Select a device:</Text>
               {devices.map((device) => (
                 <TouchableOpacity
                   key={device.address}
@@ -719,22 +748,19 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
               ))}
             </View>
           )}
-
+          
           {/* Connection Status */}
           <View style={styles.statusContainer}>
             {connecting ? (
               <ActivityIndicator size="small" color="#2196F3" />
             ) : (
               <Text style={styles.statusText}>
-                Status:{" "}
-                {isConnected
-                  ? `Connected to ${selectedDevice?.name}`
-                  : "Disconnected"}
+                Status: {isConnected ? `Connected to ${selectedDevice?.name}` : 'Disconnected'}
               </Text>
             )}
           </View>
         </View>
-
+        
         {/* OpenAI Realtime API Connection */}
         {isConnected && (
           <View style={styles.section}>
@@ -804,8 +830,8 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
             </Text>
           </View>
         )}
-
-        {/* Manual Movement Controls */}
+        
+        {/* Movement Controls */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Movement</Text>
           <View style={styles.controlGrid}>
@@ -820,7 +846,7 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
               </TouchableOpacity>
               <View style={styles.spacer} />
             </View>
-
+            
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.button, styles.actionButton]}
@@ -849,7 +875,7 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
                 <Text style={styles.buttonText}>Right</Text>
               </TouchableOpacity>
             </View>
-
+            
             <View style={styles.buttonRow}>
               <View style={styles.spacer} />
               <TouchableOpacity
@@ -863,7 +889,7 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
             </View>
           </View>
         </View>
-
+        
         {/* Speed Controls */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Speed</Text>
@@ -888,15 +914,126 @@ Always confirm verbally when you've made the robot move, like "¡Ándale! I am m
             </TouchableOpacity>
           </View>
         </View>
-
+        
+        {/* Accessories */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Accessories</Text>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.accessoryButton]}
+              onPress={() => sendCommand({ BZ: "on" })}
+            >
+              <Text style={styles.buttonText}>Buzzer On</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.accessoryButton]}
+              onPress={() => sendCommand({ BZ: "off" })}
+            >
+              <Text style={styles.buttonText}>Buzzer Off</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.accessoryButton]}
+              onPress={() => sendCommand({ LED: "on" })}
+            >
+              <Text style={styles.buttonText}>LED On</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.accessoryButton]}
+              onPress={() => sendCommand({ LED: "off" })}
+            >
+              <Text style={styles.buttonText}>LED Off</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Toy Control (GPIO 15) with new multi-click buttons */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Toy Control</Text>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.toyButton]}
+              onPressIn={() => sendCommand({ ToyGPIO15: "on" })}
+              onPressOut={() => sendCommand({ ToyGPIO15: "off" })}
+            >
+              <Text style={styles.buttonText}>Activate Toy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.toyButtonPulse]}
+              onPress={() => sendCommand({ ToyGPIO15Pulse: "pulse" })}
+            >
+              <Text style={styles.buttonText}>Pulse Toy (2s)</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* New Multi-Click Buttons */}
+          <View style={styles.buttonRow}>
+            <MultiClickButton 
+              text="Triple Click (150ms)"
+              onPress={() => simulateMultipleClicks(3, 150)}
+              style={styles.multiClickButton}
+            />
+          </View>
+          <View style={styles.buttonRow}>
+            <MultiClickButton
+              text="Five Rapid Clicks (100ms)"
+              onPress={() => simulateMultipleClicks(5, 100)}
+              style={styles.multiClickButton}
+            />
+            <MultiClickButton
+              text="Double Click (200ms)"
+              onPress={() => simulateMultipleClicks(2, 200)}
+              style={styles.multiClickButton}
+            />
+          </View>
+        </View>
+        
+        {/* RGB Controls */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>RGB Colors</Text>
+          <View style={styles.colorGrid}>
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#FF0000' }]}
+              onPress={() => sendCommand({ RGB: "(255,0,0)" })}
+            />
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#00FF00' }]}
+              onPress={() => sendCommand({ RGB: "(0,255,0)" })}
+            />
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#0000FF' }]}
+              onPress={() => sendCommand({ RGB: "(0,0,255)" })}
+            />
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#FFFF00' }]}
+              onPress={() => sendCommand({ RGB: "(255,255,0)" })}
+            />
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#00FFFF' }]}
+              onPress={() => sendCommand({ RGB: "(0,255,255)" })}
+            />
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#FF00FF' }]}
+              onPress={() => sendCommand({ RGB: "(255,0,255)" })}
+            />
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#FFFFFF' }]}
+              onPress={() => sendCommand({ RGB: "(255,255,255)" })}
+            />
+            <TouchableOpacity
+              style={[styles.colorButton, { backgroundColor: '#000000' }]}
+              onPress={() => sendCommand({ RGB: "(0,0,0)" })}
+            />
+          </View>
+        </View>
+        
         {/* Log Display */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Activity Log</Text>
           <View style={styles.logContainer}>
             {logs.map((log, index) => (
-              <Text key={index} style={styles.logText}>
-                {log}
-              </Text>
+              <Text key={index} style={styles.logText}>{log}</Text>
             ))}
           </View>
         </View>
@@ -909,95 +1046,110 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 16,
+    color: '#333',
   },
   section: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 12,
-    color: "#333",
-  },
-  listTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#333",
+    color: '#333',
   },
   buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginBottom: 8,
   },
-  toggleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 4,
-  },
   button: {
-    backgroundColor: "#2196F3",
+    backgroundColor: '#2196F3',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 6,
     minWidth: 100,
-    alignItems: "center",
+    alignItems: 'center',
     marginHorizontal: 4,
   },
   buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
+    color: '#fff',
+    fontWeight: 'bold',
   },
   actionButton: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: '#4CAF50',
   },
   stopButton: {
-    backgroundColor: "#F44336",
+    backgroundColor: '#F44336',
   },
   speedButton: {
-    backgroundColor: "#FF9800",
+    backgroundColor: '#FF9800',
   },
-  apiButton: {
-    backgroundColor: "#673AB7",
+  accessoryButton: {
+    backgroundColor: '#9C27B0',
+  },
+  toyButton: {
+    backgroundColor: '#E91E63',
+  },
+  toyButtonPulse: {
+    backgroundColor: '#C2185B',
+  },
+  multiClickButton: {
+    backgroundColor: '#AA00FF', // A distinctive purple color for multi-click
+    marginTop: 4,
+    flex: 1,
   },
   disconnectButton: {
-    backgroundColor: "#F44336",
+    backgroundColor: '#F44336',
+  },
+  apiButton: {
+    backgroundColor: '#673AB7',
   },
   deviceList: {
     marginTop: 16,
   },
   deviceItem: {
-    backgroundColor: "#E3F2FD",
+    backgroundColor: '#E3F2FD',
     padding: 12,
     borderRadius: 6,
     marginBottom: 8,
   },
   deviceName: {
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   deviceAddress: {
     fontSize: 12,
-    color: "#666",
+    color: '#666',
   },
   statusContainer: {
-    alignItems: "center",
+    alignItems: 'center',
     marginTop: 8,
   },
   statusText: {
-    color: "#666",
+    color: '#666',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 4,
   },
   controlGrid: {
     marginVertical: 8,
@@ -1005,81 +1157,82 @@ const styles = StyleSheet.create({
   spacer: {
     width: 100,
   },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  colorButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    margin: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
   logContainer: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: '#f8f9fa',
     borderRadius: 4,
     padding: 8,
     maxHeight: 200,
   },
   logText: {
     fontSize: 12,
-    fontFamily: "monospace",
-    color: "#333",
+    fontFamily: 'monospace',
+    color: '#333',
     marginBottom: 2,
   },
-  voiceControlContainer: {
-    alignItems: "center",
-    marginVertical: 16,
-  },
-  micButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#E3F2FD",
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  listeningButton: {
-    backgroundColor: "#F44336",
-  },
-  micButtonText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#333",
+  // Voice control related styles
+  cactusSection: {
+    backgroundColor: '#FFFBEA',
+    borderWidth: 1,
+    borderColor: '#FFD700',
   },
   transcriptContainer: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: '#f8f9fa',
     padding: 12,
     borderRadius: 6,
     marginVertical: 8,
   },
   label: {
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 4,
-    color: "#333",
+    color: '#333',
   },
   transcript: {
-    color: "#555",
+    color: '#555',
   },
   responseContainer: {
-    backgroundColor: "#EFF7FF",
+    backgroundColor: '#EFF7FF',
     padding: 12,
     borderRadius: 6,
     marginVertical: 8,
   },
   speakingContainer: {
-    backgroundColor: "#E3F2FD",
+    backgroundColor: '#E3F2FD',
     borderWidth: 1,
-    borderColor: "#2196F3",
+    borderColor: '#2196F3',
   },
   response: {
-    color: "#333",
+    color: '#333',
   },
   indicator: {
-    backgroundColor: "rgba(33, 150, 243, 0.2)",
+    backgroundColor: 'rgba(33, 150, 243, 0.2)',
     borderRadius: 12,
     paddingVertical: 2,
     paddingHorizontal: 8,
-    alignSelf: "flex-start",
+    alignSelf: 'flex-start',
     marginTop: 8,
   },
   indicatorText: {
     fontSize: 12,
-    color: "#2196F3",
+    color: '#2196F3',
+  },
+  explanationText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
