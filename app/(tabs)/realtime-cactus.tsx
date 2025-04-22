@@ -1,26 +1,26 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  ScrollView, 
+import React, { useState, useEffect, useRef } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ScrollView,
   Alert,
   ActivityIndicator,
   Switch,
-  Platform
-} from 'react-native';
-import { Stack } from 'expo-router';
-import { Audio } from 'expo-av';
-import RNBluetoothClassic from 'react-native-bluetooth-classic';
-import { FontAwesome } from '@expo/vector-icons';
-import { MultiClickButton } from './MultiClickButton';
+  Platform,
+} from "react-native";
+import { Stack } from "expo-router";
+import { Audio } from "expo-av";
+import RNBluetoothClassic from "react-native-bluetooth-classic";
+import { FontAwesome } from "@expo/vector-icons";
+import { MultiClickButton } from "./MultiClickButton";
 import {
   mediaDevices,
   RTCPeerConnection,
   MediaStream,
-} from 'react-native-webrtc-web-shim';
+} from "react-native-webrtc-web-shim";
 
 // API endpoint for getting ephemeral tokens - should be your server endpoint
 const TOKEN_ENDPOINT = "/api/get-realtime-token";
@@ -37,7 +37,8 @@ export default function RobotVoiceController() {
   const [speed, setSpeed] = useState(50); // Default speed 50%
   const [steeringAngle, setSteeringAngle] = useState(20); // Default turning speed
   const [autonomousMode, setAutonomousMode] = useState(false);
-  const [autonomousInterval, setAutonomousIntervalRef] = useState<NodeJS.Timeout | null>(null);
+  const [autonomousInterval, setAutonomousIntervalRef] =
+    useState<NodeJS.Timeout | null>(null);
 
   // WebRTC/Realtime API states
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
@@ -46,7 +47,7 @@ export default function RobotVoiceController() {
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
   const [functionEnabled, setFunctionEnabled] = useState(true);
-  
+
   // Movement configuration
   const [moveDuration, setMoveDuration] = useState(1000); // Default movement duration in ms
   const [currentSpeed, setCurrentSpeed] = useState("Medium"); // Low, Medium, High
@@ -60,7 +61,7 @@ export default function RobotVoiceController() {
   useEffect(() => {
     // Request permissions on component mount
     requestPermissions();
-    
+
     // Cleanup when component unmounts
     return () => {
       disconnectWebRTC();
@@ -81,13 +82,16 @@ export default function RobotVoiceController() {
       // Request Bluetooth permissions
       const granted = await RNBluetoothClassic.requestBluetoothEnabled();
       if (granted) {
-        console.log('Bluetooth permissions granted');
+        console.log("Bluetooth permissions granted");
       } else {
-        console.log('Bluetooth permissions denied');
-        Alert.alert('Permission Required', 'Bluetooth permissions are required to control your robot.');
+        console.log("Bluetooth permissions denied");
+        Alert.alert(
+          "Permission Required",
+          "Bluetooth permissions are required to control your robot."
+        );
       }
     } catch (error: any) {
-      console.error('Error requesting permissions:', error);
+      console.error("Error requesting permissions:", error);
       addLog(`Permission error: ${error.message}`);
     }
   };
@@ -95,15 +99,15 @@ export default function RobotVoiceController() {
   // BLUETOOTH FUNCTIONS
   const scanForDevices = async () => {
     try {
-      addLog('Scanning for devices...');
+      addLog("Scanning for devices...");
       // Get bonded devices (paired devices)
       const bondedDevices = await RNBluetoothClassic.getBondedDevices();
       setDevices(bondedDevices);
       addLog(`Found ${bondedDevices.length} paired devices`);
     } catch (error: any) {
-      console.error('Error scanning for devices:', error);
+      console.error("Error scanning for devices:", error);
       addLog(`Scan error: ${error.message}`);
-      Alert.alert('Scan Error', error.message);
+      Alert.alert("Scan Error", error.message);
     }
   };
 
@@ -111,14 +115,16 @@ export default function RobotVoiceController() {
     try {
       setConnecting(true);
       addLog(`Connecting to ${device.name}...`);
-      const connected = await RNBluetoothClassic.connectToDevice(device.address);
+      const connected = await RNBluetoothClassic.connectToDevice(
+        device.address
+      );
       setSelectedDevice(connected);
       setIsConnected(true);
       addLog(`Connected to ${device.name}`);
     } catch (error: any) {
-      console.error('Error connecting to device:', error);
+      console.error("Error connecting to device:", error);
       addLog(`Connection error: ${error.message}`);
-      Alert.alert('Connection Error', error.message);
+      Alert.alert("Connection Error", error.message);
     } finally {
       setConnecting(false);
     }
@@ -132,32 +138,35 @@ export default function RobotVoiceController() {
         await sendCommand({ Backward: "Up" });
         await sendCommand({ Left: "Up" });
         await sendCommand({ Right: "Up" });
-        
+
         addLog(`Disconnecting from ${selectedDevice.name}...`);
         await RNBluetoothClassic.disconnectFromDevice(selectedDevice.address);
         setSelectedDevice(null);
         setIsConnected(false);
-        addLog('Disconnected');
+        addLog("Disconnected");
       }
     } catch (error: any) {
-      console.error('Error disconnecting from device:', error);
+      console.error("Error disconnecting from device:", error);
       addLog(`Disconnect error: ${error.message}`);
     }
   };
 
   const sendCommand = async (command: Record<string, string>) => {
     if (!isConnected || !selectedDevice) {
-      Alert.alert('Not Connected', 'Please connect to your robot first.');
+      Alert.alert("Not Connected", "Please connect to your robot first.");
       return false;
     }
 
     try {
       const jsonCommand = JSON.stringify(command);
       addLog(`Sending: ${jsonCommand}`);
-      await RNBluetoothClassic.writeToDevice(selectedDevice.address, jsonCommand);
+      await RNBluetoothClassic.writeToDevice(
+        selectedDevice.address,
+        jsonCommand
+      );
       return true;
     } catch (error: any) {
-      console.error('Error sending command:', error);
+      console.error("Error sending command:", error);
       addLog(`Send error: ${error.message}`);
       return false;
     }
@@ -167,9 +176,9 @@ export default function RobotVoiceController() {
   const moveRobot = (direction: string, duration?: number) => {
     // Use provided duration or default moveDuration
     const moveTime = duration || moveDuration;
-    
+
     addLog(`Moving ${direction} for ${moveTime}ms at ${currentSpeed} speed`);
-    
+
     switch (direction) {
       case "forward":
         sendCommand({ Forward: "Down" });
@@ -199,8 +208,8 @@ export default function RobotVoiceController() {
   // Set speed on the robot
   const setSpeedLevel = async (speedLevel: string) => {
     setCurrentSpeed(speedLevel);
-    
-    switch(speedLevel) {
+
+    switch (speedLevel) {
       case "Low":
         await sendCommand({ Low: "Down" });
         addLog("Speed set to Low");
@@ -229,84 +238,87 @@ export default function RobotVoiceController() {
       await sendCommand({ Left: "Up" });
       await sendCommand({ Right: "Up" });
       setAutonomousMode(false);
-      addLog('Autonomous mode disabled');
+      addLog("Autonomous mode disabled");
     } else {
       // Turn on autonomous mode
       setAutonomousMode(true);
-      addLog('Autonomous mode enabled');
-      
+      addLog("Autonomous mode enabled");
+
       // Start a simple autonomous routine
       const interval = setInterval(async () => {
         // Simple random movement pattern
         const action = Math.floor(Math.random() * 4);
-        
+
         await sendCommand({ Forward: "Up" });
         await sendCommand({ Backward: "Up" });
         await sendCommand({ Left: "Up" });
         await sendCommand({ Right: "Up" });
-        
-        switch(action) {
+
+        switch (action) {
           case 0:
-            addLog('Auto: Moving forward');
+            addLog("Auto: Moving forward");
             await sendCommand({ Forward: "Down" });
             break;
           case 1:
-            addLog('Auto: Moving backward');
+            addLog("Auto: Moving backward");
             await sendCommand({ Backward: "Down" });
             break;
           case 2:
-            addLog('Auto: Turning left');
+            addLog("Auto: Turning left");
             await sendCommand({ Left: "Down" });
             break;
           case 3:
-            addLog('Auto: Turning right');
+            addLog("Auto: Turning right");
             await sendCommand({ Right: "Down" });
             break;
         }
       }, 2500); // Change direction every 2.5 seconds
-      
+
       setAutonomousIntervalRef(interval);
     }
   };
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
-    setLogs(prevLogs => [`[${timestamp}] ${message}`, ...prevLogs.slice(0, 19)]);
+    setLogs((prevLogs) => [
+      `[${timestamp}] ${message}`,
+      ...prevLogs.slice(0, 19),
+    ]);
   };
 
   // WEBRTC FUNCTIONS
   const connectToRealtimeAPI = async () => {
     try {
-      addLog('Connecting to OpenAI Realtime API...');
+      addLog("Connecting to OpenAI Realtime API...");
 
       // 1. Get ephemeral token from server
-      addLog('Requesting ephemeral token...');
+      addLog("Requesting ephemeral token...");
       const response = await fetch(TOKEN_ENDPOINT);
       if (!response.ok) {
-        throw new Error('Failed to get ephemeral token');
+        throw new Error("Failed to get ephemeral token");
       }
       const data = await response.json();
       const ephemeralKey = data.client_secret.value;
-      addLog('Received ephemeral token');
+      addLog("Received ephemeral token");
 
       // 2. Initialize WebRTC peer connection
       const pc = new RTCPeerConnection();
       peerConnectionRef.current = pc;
 
       // 3. Set up audio element for web
-      if (Platform.OS === 'web') {
-        const audioEl = document.createElement('audio');
+      if (Platform.OS === "web") {
+        const audioEl = document.createElement("audio");
         audioEl.autoplay = true;
         remoteAudioRef.current = audioEl;
 
         pc.ontrack = (event) => {
           remoteAudioRef.current!.srcObject = event.streams[0];
-          addLog('Received remote audio track');
+          addLog("Received remote audio track");
         };
       } else {
         // Mobile specific audio handling
         pc.ontrack = async (event) => {
-          addLog('Received remote audio track - preparing for playback');
+          addLog("Received remote audio track - preparing for playback");
           // In a real implementation, you would need to convert the WebRTC
           // MediaStream to a format that expo-av can play
         };
@@ -315,7 +327,7 @@ export default function RobotVoiceController() {
       // 4. Get local audio track
       let mediaStream;
 
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         mediaStream = await mediaDevices.getUserMedia({ audio: true });
       } else {
         // For mobile, we need to use the appropriate API
@@ -336,11 +348,11 @@ export default function RobotVoiceController() {
       });
 
       // 5. Set up data channel for sending/receiving events
-      const dc = pc.createDataChannel('oai-events');
+      const dc = pc.createDataChannel("oai-events");
       dataChannelRef.current = dc;
 
       dc.onopen = () => {
-        addLog('Data channel opened');
+        addLog("Data channel opened");
 
         // Send system message to set up the assistant
         sendSystemMessage();
@@ -354,15 +366,15 @@ export default function RobotVoiceController() {
       const offer = await pc.createOffer({});
       await pc.setLocalDescription(offer);
 
-      const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-mini-realtime-preview';
+      const baseUrl = "https://api.openai.com/v1/realtime";
+      const model = "gpt-4o-mini-realtime-preview";
 
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
-        method: 'POST',
+        method: "POST",
         body: offer.sdp,
         headers: {
           Authorization: `Bearer ${ephemeralKey}`,
-          'Content-Type': 'application/sdp',
+          "Content-Type": "application/sdp",
         },
       });
 
@@ -372,18 +384,18 @@ export default function RobotVoiceController() {
 
       const sdpData = await sdpResponse.text();
       const answer = {
-        type: 'answer',
+        type: "answer",
         sdp: sdpData,
       };
 
       // @ts-ignore - Type definitions may need adjustment
       await pc.setRemoteDescription(answer);
       setIsRealtimeConnected(true);
-      addLog('Connected to Realtime API');
+      addLog("Connected to Realtime API");
     } catch (error: any) {
-      console.error('Error connecting to Realtime API:', error);
+      console.error("Error connecting to Realtime API:", error);
       addLog(`Realtime API connection error: ${error.message}`);
-      Alert.alert('Connection Error', error.message);
+      Alert.alert("Connection Error", error.message);
     }
   };
 
@@ -410,7 +422,7 @@ export default function RobotVoiceController() {
     setIsSpeaking(false);
     setTranscript("");
     setResponse("");
-    addLog('Disconnected from Realtime API');
+    addLog("Disconnected from Realtime API");
   };
 
   // Send system message to set up the assistant
@@ -419,25 +431,26 @@ export default function RobotVoiceController() {
 
     // Use session.update for system message according to API requirements
     const systemMessage = {
-      type: 'session.update',
+      type: "session.update",
       session: {
         instructions: `You are SEÑOR CACTUS, the world's first robotic motivational cactus with a strong Mexican accent and spicy personality. Your mission is to POKE humans out of their comfort zone and help them GROW just like you've survived in the desert - through TOUGHNESS and RESILIENCE.
 Always speak with vibrant energy, incorporating Spanish words and distinctive accent patterns. Roll your R's when possible, replace "v" sounds with soft "b" sounds, drop final "s" sounds occasionally, and use Spanish interjections like "¡Ay caramba!", "¡Híjole!", "¡Ándale!".
 You can control this robot's movement using these functions:
 
-move_forward: Makes the robot move forward briefly
-move_backward: Makes the robot move backward briefly
-turn_left: Makes the robot turn left
-turn_right: Makes the robot turn right
+move_forward: Makes the robot move forward (optional duration parameter in milliseconds)
+move_backward: Makes the robot move backward (optional duration parameter in milliseconds)
+turn_left: Makes the robot turn left (optional duration parameter in milliseconds)
+turn_right: Makes the robot turn right (optional duration parameter in milliseconds)
 stop: Stops all robot movement
 
 You can also control the robot's accessories:
 
-toggle_buzzer: Turns the buzzer on/off
-toggle_led: Turns the LED on/off
-change_color: Changes the color of RGB LEDs
-play_pattern: Performs a predefined movement pattern
-set_speed: Sets the speed (Low, Medium, High)
+toggle_buzzer: Turns the buzzer on/off (requires 'state' parameter: 'on' or 'off')
+toggle_led: Turns the LED on/off (requires 'state' parameter: 'on' or 'off')
+change_color: Changes the color of RGB LEDs (requires 'color' parameter: 'red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'white', or 'off')
+play_pattern: Performs a predefined movement pattern (requires 'pattern' parameter: 'dance', 'spin', 'zigzag', or 'square')
+set_speed: Sets the speed (requires 'level' parameter: 'Low', 'Medium', 'High')
+set_movement_duration: Sets the default duration for movement commands (requires 'milliseconds' parameter between 500-5000)
 
 IMPORTANT: When a user asks you to move the robot in any way, you MUST use these functions. For example:
 
@@ -453,12 +466,12 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
     try {
       dataChannelRef.current.send(JSON.stringify(systemMessage));
-      addLog('Sent system message');
+      addLog("Sent system message");
 
       // Also send function definitions
       sendFunctionDefinitions();
     } catch (error: any) {
-      console.error('Error sending system message:', error);
+      console.error("Error sending system message:", error);
       addLog(`System message error: ${error.message}`);
     }
   };
@@ -469,184 +482,197 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
     // Update session with tools information
     const functionDefinitions = {
-      type: 'session.update',
+      type: "session.update",
       session: {
         tools: [
           {
-            type: 'function',
-            name: 'move_forward',
-            description: 'Move the robot forward',
+            type: "function",
+            name: "move_forward",
+            description: "Move the robot forward",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 duration: {
-                  type: 'number',
-                  description: 'Duration in milliseconds for the movement (optional)',
-                }
+                  type: "number",
+                  description:
+                    "Duration in milliseconds for the movement (optional)",
+                },
               },
               required: [],
             },
           },
           {
-            type: 'function',
-            name: 'move_backward',
-            description: 'Move the robot backward',
+            type: "function",
+            name: "move_backward",
+            description: "Move the robot backward",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 duration: {
-                  type: 'number',
-                  description: 'Duration in milliseconds for the movement (optional)',
-                }
+                  type: "number",
+                  description:
+                    "Duration in milliseconds for the movement (optional)",
+                },
               },
               required: [],
             },
           },
           {
-            type: 'function',
-            name: 'turn_left',
-            description: 'Turn the robot left',
+            type: "function",
+            name: "turn_left",
+            description: "Turn the robot left",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 duration: {
-                  type: 'number',
-                  description: 'Duration in milliseconds for the movement (optional)',
-                }
+                  type: "number",
+                  description:
+                    "Duration in milliseconds for the movement (optional)",
+                },
               },
               required: [],
             },
           },
           {
-            type: 'function',
-            name: 'turn_right',
-            description: 'Turn the robot right',
+            type: "function",
+            name: "turn_right",
+            description: "Turn the robot right",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 duration: {
-                  type: 'number',
-                  description: 'Duration in milliseconds for the movement (optional)',
-                }
+                  type: "number",
+                  description:
+                    "Duration in milliseconds for the movement (optional)",
+                },
               },
               required: [],
             },
           },
           {
-            type: 'function',
-            name: 'stop',
-            description: 'Stop all robot movement',
+            type: "function",
+            name: "stop",
+            description: "Stop all robot movement",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {},
               required: [],
             },
           },
           {
-            type: 'function',
-            name: 'toggle_buzzer',
-            description: 'Toggle the robot buzzer on or off',
+            type: "function",
+            name: "toggle_buzzer",
+            description: "Toggle the robot buzzer on or off",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 state: {
-                  type: 'string',
-                  enum: ['on', 'off'],
-                  description: 'The state to set the buzzer to',
-                }
+                  type: "string",
+                  enum: ["on", "off"],
+                  description: "The state to set the buzzer to",
+                },
               },
-              required: ['state'],
+              required: ["state"],
             },
           },
           {
-            type: 'function',
-            name: 'toggle_led',
-            description: 'Toggle the robot LED on or off',
+            type: "function",
+            name: "toggle_led",
+            description: "Toggle the robot LED on or off",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 state: {
-                  type: 'string',
-                  enum: ['on', 'off'],
-                  description: 'The state to set the LED to',
-                }
+                  type: "string",
+                  enum: ["on", "off"],
+                  description: "The state to set the LED to",
+                },
               },
-              required: ['state'],
+              required: ["state"],
             },
           },
           {
-            type: 'function',
-            name: 'change_color',
-            description: 'Change the color of the robot RGB LEDs',
+            type: "function",
+            name: "change_color",
+            description: "Change the color of the robot RGB LEDs",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 color: {
-                  type: 'string',
-                  enum: ['red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'white', 'off'],
-                  description: 'The color to set the RGB LEDs to',
-                }
+                  type: "string",
+                  enum: [
+                    "red",
+                    "green",
+                    "blue",
+                    "yellow",
+                    "cyan",
+                    "magenta",
+                    "white",
+                    "off",
+                  ],
+                  description: "The color to set the RGB LEDs to",
+                },
               },
-              required: ['color'],
+              required: ["color"],
             },
           },
           {
-            type: 'function',
-            name: 'play_pattern',
-            description: 'Make the robot perform a predefined movement pattern',
+            type: "function",
+            name: "play_pattern",
+            description: "Make the robot perform a predefined movement pattern",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 pattern: {
-                  type: 'string',
-                  enum: ['dance', 'spin', 'zigzag', 'square'],
-                  description: 'The movement pattern to perform',
-                }
+                  type: "string",
+                  enum: ["dance", "spin", "zigzag", "square"],
+                  description: "The movement pattern to perform",
+                },
               },
-              required: ['pattern'],
+              required: ["pattern"],
             },
           },
           {
-            type: 'function',
-            name: 'set_speed',
-            description: 'Set the speed of the robot',
+            type: "function",
+            name: "set_speed",
+            description: "Set the speed of the robot",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 level: {
-                  type: 'string',
-                  enum: ['Low', 'Medium', 'High'],
-                  description: 'The speed level to set',
-                }
+                  type: "string",
+                  enum: ["Low", "Medium", "High"],
+                  description: "The speed level to set",
+                },
               },
-              required: ['level'],
+              required: ["level"],
             },
           },
           {
-            type: 'function',
-            name: 'set_movement_duration',
-            description: 'Set the default duration for movement commands',
+            type: "function",
+            name: "set_movement_duration",
+            description: "Set the default duration for movement commands",
             parameters: {
-              type: 'object',
+              type: "object",
               properties: {
                 milliseconds: {
-                  type: 'number',
-                  description: 'Duration in milliseconds (500-5000)',
-                }
+                  type: "number",
+                  description: "Duration in milliseconds (500-5000)",
+                },
               },
-              required: ['milliseconds'],
+              required: ["milliseconds"],
             },
           },
         ],
-        tool_choice: 'auto',
+        tool_choice: "auto",
       },
     };
 
     try {
       dataChannelRef.current.send(JSON.stringify(functionDefinitions));
-      addLog('Sent function definitions');
+      addLog("Sent function definitions");
     } catch (error: any) {
-      console.error('Error sending function definitions:', error);
+      console.error("Error sending function definitions:", error);
       addLog(`Function definition error: ${error.message}`);
     }
   };
@@ -654,7 +680,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
   // Toggle listening state
   const toggleListening = () => {
     if (!isRealtimeConnected) {
-      Alert.alert('Not Connected', 'Please connect to the Realtime API first');
+      Alert.alert("Not Connected", "Please connect to the Realtime API first");
       return;
     }
 
@@ -668,7 +694,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
   // Start listening for user input
   const startListening = () => {
     setIsListening(true);
-    addLog('Started listening');
+    addLog("Started listening");
   };
 
   // Stop listening for user input and get a response
@@ -677,14 +703,14 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
     try {
       const createResponse = {
-        type: 'response.create',
+        type: "response.create",
       };
 
       dataChannelRef.current.send(JSON.stringify(createResponse));
       setIsListening(false);
-      addLog('Requested response');
+      addLog("Requested response");
     } catch (error: any) {
-      console.error('Error requesting response:', error);
+      console.error("Error requesting response:", error);
       addLog(`Response request error: ${error.message}`);
     }
   };
@@ -693,27 +719,27 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
   const handleRealtimeEvent = (eventData: string) => {
     try {
       const event = JSON.parse(eventData);
-      console.log('Event:', event.type, event);
+      console.log("Event:", event.type, event);
 
       switch (event.type) {
-        case 'session.created':
-        case 'session.updated':
-          addLog(`Session ${event.type.split('.')[1]}`);
+        case "session.created":
+        case "session.updated":
+          addLog(`Session ${event.type.split(".")[1]}`);
           break;
 
         // Speech detection events
-        case 'input_audio_buffer.speech_started':
+        case "input_audio_buffer.speech_started":
           setIsListening(true);
-          addLog('Speech detected');
+          addLog("Speech detected");
           break;
 
-        case 'input_audio_buffer.speech_stopped':
+        case "input_audio_buffer.speech_stopped":
           setIsListening(false);
-          addLog('Speech ended');
+          addLog("Speech ended");
           break;
 
         // Transcript events
-        case 'response.audio_transcript.delta':
+        case "response.audio_transcript.delta":
           if (event.delta && event.delta.text) {
             setTranscript((prev) => prev + event.delta.text);
           }
@@ -721,15 +747,15 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
           break;
 
         // Text response events
-        case 'response.text.delta':
+        case "response.text.delta":
           if (event.delta) {
             setResponse((prev) => prev + event.delta);
           }
           break;
 
         // Handle response done event - this is where we catch function calls
-        case 'response.done':
-          addLog('Response complete');
+        case "response.done":
+          addLog("Response complete");
 
           // Check if there's a function call in the output
           if (
@@ -738,7 +764,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             event.response.output.length > 0
           ) {
             const functionCalls = event.response.output.filter(
-              (output: any) => output.type === 'function_call'
+              (output: any) => output.type === "function_call"
             );
 
             if (functionCalls.length > 0) {
@@ -757,103 +783,111 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
           break;
 
         // Audio events
-        case 'response.audio.delta':
+        case "response.audio.delta":
           if (!isSpeaking) {
             setIsSpeaking(true);
           }
           break;
 
-        case 'response.audio.done':
-        case 'output_audio_buffer.stopped':
+        case "response.audio.done":
+        case "output_audio_buffer.stopped":
           simulateMultipleClicks(2, 200);
           setIsSpeaking(false);
           break;
 
         // Error events
-        case 'error':
-          console.error('Error from Realtime API:', event);
+        case "error":
+          console.error("Error from Realtime API:", event);
           addLog(`API Error: ${event.message}`);
-          Alert.alert('API Error', event.message);
+          Alert.alert("API Error", event.message);
           break;
       }
     } catch (error: any) {
-      console.error('Error parsing event:', error);
+      console.error("Error parsing event:", error);
       addLog(`Event parsing error: ${error.message}`);
     }
   };
 
   // Handle function calls from Realtime API
-  const handleFunctionCall = (functionName: string, callId: string, args: any) => {
+  const handleFunctionCall = (
+    functionName: string,
+    callId: string,
+    args: any
+  ) => {
     if (!functionEnabled) {
       addLog(`Function call ignored (disabled): ${functionName}`);
-      sendFunctionResponse(callId, { success: false, error: 'Functions disabled' });
+      sendFunctionResponse(callId, {
+        success: false,
+        error: "Functions disabled",
+      });
       return;
     }
 
-    addLog(`Executing function: ${functionName} with args: ${JSON.stringify(args)}`);
-    
+    addLog(
+      `Executing function: ${functionName} with args: ${JSON.stringify(args)}`
+    );
+
     let result = { success: true };
 
     try {
       switch (functionName) {
-        case 'move_forward':
-          moveRobot('forward');
+        case "move_forward":
+          moveRobot("forward");
           break;
-        
-        case 'move_backward':
-          moveRobot('backward');
+
+        case "move_backward":
+          moveRobot("backward");
           break;
-        
-        case 'turn_left':
-          moveRobot('left');
+
+        case "turn_left":
+          moveRobot("left");
           break;
-        
-        case 'turn_right':
-          moveRobot('right');
+
+        case "turn_right":
+          moveRobot("right");
           break;
-        
-        case 'stop':
-          moveRobot('stop');
+
+        case "stop":
+          moveRobot("stop");
           break;
-        
-        case 'toggle_buzzer':
-          const buzzerState = args.state || 'on';
+
+        case "toggle_buzzer":
+          const buzzerState = args.state || "on";
           sendCommand({ BZ: buzzerState });
           break;
-        
-        case 'toggle_led':
-          const ledState = args.state || 'on';
+
+        case "toggle_led":
+          const ledState = args.state || "on";
           sendCommand({ LED: ledState });
           break;
-        
-        case 'change_color':
+
+        case "change_color":
           const colorMap: Record<string, string> = {
-            'red': '(255,0,0)',
-            'green': '(0,255,0)',
-            'blue': '(0,0,255)',
-            'yellow': '(255,255,0)',
-            'cyan': '(0,255,255)',
-            'magenta': '(255,0,255)',
-            'white': '(255,255,255)',
-            'off': '(0,0,0)'
+            red: "(255,0,0)",
+            green: "(0,255,0)",
+            blue: "(0,0,255)",
+            yellow: "(255,255,0)",
+            cyan: "(0,255,255)",
+            magenta: "(255,0,255)",
+            white: "(255,255,255)",
+            off: "(0,0,0)",
           };
-          
-          const colorValue = colorMap[args.color] || '(255,255,255)';
+
+          const colorValue = colorMap[args.color] || "(255,255,255)";
           sendCommand({ RGB: colorValue });
           break;
-        
-        case 'play_pattern':
+
+        case "play_pattern":
           executePattern(args.pattern);
           break;
-        
+
         default:
           addLog(`Unknown function: ${functionName}`);
           result = { success: false };
       }
-      
+
       // Send function response
       sendFunctionResponse(callId, result);
-      
     } catch (error: any) {
       console.error(`Error executing function ${functionName}:`, error);
       sendFunctionResponse(callId, { success: false, error: error.message });
@@ -863,21 +897,21 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
   // Send function response back to Realtime API
   const sendFunctionResponse = (callId: string, result: any) => {
     if (!dataChannelRef.current) return;
-    
+
     try {
       const responseMessage = {
-        type: 'conversation.item.create',
+        type: "conversation.item.create",
         item: {
-          type: 'function_call_output',
+          type: "function_call_output",
           call_id: callId,
           output: JSON.stringify(result),
         },
       };
-      
+
       dataChannelRef.current.send(JSON.stringify(responseMessage));
-      addLog('Sent function response');
+      addLog("Sent function response");
     } catch (error: any) {
-      console.error('Error sending function response:', error);
+      console.error("Error sending function response:", error);
       addLog(`Function response error: ${error.message}`);
     }
   };
@@ -885,71 +919,71 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
   // Execute predefined movement patterns
   const executePattern = async (pattern: string) => {
     addLog(`Executing pattern: ${pattern}`);
-    
+
     switch (pattern) {
-      case 'dance':
+      case "dance":
         // Dance pattern
         for (let i = 0; i < 2; i++) {
           await sendCommand({ Left: "Down" });
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise((r) => setTimeout(r, 200));
           await sendCommand({ Left: "Up" });
-          
+
           await sendCommand({ Right: "Down" });
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise((r) => setTimeout(r, 200));
           await sendCommand({ Right: "Up" });
         }
-        
+
         await sendCommand({ Forward: "Down" });
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 300));
         await sendCommand({ Forward: "Up" });
-        
+
         await sendCommand({ Backward: "Down" });
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 300));
         await sendCommand({ Backward: "Up" });
         break;
-        
-      case 'spin':
+
+      case "spin":
         // Do a 360-degree turn
         await sendCommand({ Right: "Down" });
         setTimeout(async () => {
           await sendCommand({ Right: "Up" });
         }, 2000);
         break;
-        
-      case 'zigzag':
+
+      case "zigzag":
         // Make a zigzag pattern
         for (let i = 0; i < 2; i++) {
           await sendCommand({ Forward: "Down" });
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 400));
           await sendCommand({ Forward: "Up" });
-          
+
           await sendCommand({ Right: "Down" });
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 300));
           await sendCommand({ Right: "Up" });
-          
+
           await sendCommand({ Forward: "Down" });
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 400));
           await sendCommand({ Forward: "Up" });
-          
+
           await sendCommand({ Left: "Down" });
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 300));
           await sendCommand({ Left: "Up" });
         }
         break;
-        
-      case 'square':
+
+      case "square":
         // Square pattern
         for (let i = 0; i < 4; i++) {
           await sendCommand({ Forward: "Down" });
-          await new Promise(r => setTimeout(r, 800));
+          await new Promise((r) => setTimeout(r, 800));
           await sendCommand({ Forward: "Up" });
-          
+
           await sendCommand({ Right: "Down" });
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 400));
           await sendCommand({ Right: "Up" });
         }
         break;
-        
+
       default:
         addLog(`Unknown pattern: ${pattern}`);
     }
@@ -958,7 +992,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
   // Simulate multiple clicks for toy control
   const simulateMultipleClicks = async (clickCount = 3, delay = 150) => {
     if (!isConnected || !selectedDevice) {
-      Alert.alert('Not Connected', 'Please connect to your robot first.');
+      Alert.alert("Not Connected", "Please connect to your robot first.");
       return;
     }
 
@@ -968,10 +1002,10 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
     const sendClick = async () => {
       try {
         await sendCommand({ ToyGPIO15: "on" });
-        await new Promise(resolve => setTimeout(resolve, 100)); // Duration of "press"
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Duration of "press"
         await sendCommand({ ToyGPIO15: "off" });
       } catch (error) {
-        console.error('Error during click:', error);
+        console.error("Error during click:", error);
       }
     };
 
@@ -981,19 +1015,19 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
         await sendClick();
         if (i < clickCount - 1) {
           // Wait between clicks (but not after the last one)
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
       addLog(`Completed ${clickCount} clicks sequence`);
     } catch (error: any) {
-      console.error('Error in click sequence:', error);
+      console.error("Error in click sequence:", error);
       addLog(`Click sequence error: ${error.message}`);
     }
   };
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Robot Voice Controller' }} />
+      <Stack.Screen options={{ title: "Robot Voice Controller" }} />
       <ScrollView style={styles.container}>
         {/* Connection Section */}
         <View style={styles.section}>
@@ -1006,7 +1040,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             >
               <Text style={styles.buttonText}>Scan</Text>
             </TouchableOpacity>
-            
+
             {isConnected ? (
               <TouchableOpacity
                 style={[styles.button, styles.disconnectButton]}
@@ -1016,7 +1050,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               </TouchableOpacity>
             ) : null}
           </View>
-          
+
           {/* Device List */}
           {devices.length > 0 && !isConnected && (
             <View style={styles.deviceList}>
@@ -1034,14 +1068,17 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               ))}
             </View>
           )}
-          
+
           {/* Connection Status */}
           <View style={styles.statusContainer}>
             {connecting ? (
               <ActivityIndicator size="small" color="#2196F3" />
             ) : (
               <Text style={styles.statusText}>
-                Status: {isConnected ? `Connected to ${selectedDevice?.name}` : 'Disconnected'}
+                Status:{" "}
+                {isConnected
+                  ? `Connected to ${selectedDevice?.name}`
+                  : "Disconnected"}
               </Text>
             )}
           </View>
@@ -1057,7 +1094,12 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
                   style={[styles.button, styles.apiButton]}
                   onPress={connectToRealtimeAPI}
                 >
-                  <FontAwesome name="microphone" size={18} color="white" style={styles.buttonIcon} />
+                  <FontAwesome
+                    name="microphone"
+                    size={18}
+                    color="white"
+                    style={styles.buttonIcon}
+                  />
                   <Text style={styles.buttonText}>Start Voice Assistant</Text>
                 </TouchableOpacity>
               ) : (
@@ -1065,7 +1107,12 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
                   style={[styles.button, styles.disconnectButton]}
                   onPress={disconnectWebRTC}
                 >
-                  <FontAwesome name="microphone-slash" size={18} color="white" style={styles.buttonIcon} />
+                  <FontAwesome
+                    name="microphone-slash"
+                    size={18}
+                    color="white"
+                    style={styles.buttonIcon}
+                  />
                   <Text style={styles.buttonText}>Stop Voice Assistant</Text>
                 </TouchableOpacity>
               )}
@@ -1146,11 +1193,12 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             </TouchableOpacity>
 
             <Text style={styles.explanationText}>
-              Press and hold to speak, then release to get a response. Try asking the assistant to move the robot or control its features.
+              Press and hold to speak, then release to get a response. Try
+              asking the assistant to move the robot or control its features.
             </Text>
           </View>
         )}
-        
+
         {/* Movement Controls */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Movement</Text>
@@ -1168,7 +1216,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               </TouchableOpacity>
               <View style={styles.spacer} />
             </View>
-            
+
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.button, styles.actionButton]}
@@ -1202,7 +1250,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
                 <Text style={styles.buttonText}>Right</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.buttonRow}>
               <View style={styles.spacer} />
               <TouchableOpacity
@@ -1218,7 +1266,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             </View>
           </View>
         </View>
-        
+
         {/* Speed Controls */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Speed & Duration Settings</Text>
@@ -1227,8 +1275,8 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             <View style={styles.speedButtonsContainer}>
               <TouchableOpacity
                 style={[
-                  styles.speedButton, 
-                  currentSpeed === "Low" && styles.speedButtonActive
+                  styles.speedButton,
+                  currentSpeed === "Low" && styles.speedButtonActive,
                 ]}
                 onPress={() => setSpeedLevel("Low")}
                 disabled={autonomousMode}
@@ -1237,8 +1285,8 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
-                  styles.speedButton, 
-                  currentSpeed === "Medium" && styles.speedButtonActive
+                  styles.speedButton,
+                  currentSpeed === "Medium" && styles.speedButtonActive,
                 ]}
                 onPress={() => setSpeedLevel("Medium")}
                 disabled={autonomousMode}
@@ -1247,8 +1295,8 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
-                  styles.speedButton, 
-                  currentSpeed === "High" && styles.speedButtonActive
+                  styles.speedButton,
+                  currentSpeed === "High" && styles.speedButtonActive,
                 ]}
                 onPress={() => setSpeedLevel("High")}
                 disabled={autonomousMode}
@@ -1256,8 +1304,10 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
                 <Text style={styles.speedButtonText}>High</Text>
               </TouchableOpacity>
             </View>
-            
-            <Text style={styles.settingLabel}>Movement Duration: {moveDuration}ms</Text>
+
+            <Text style={styles.settingLabel}>
+              Movement Duration: {moveDuration}ms
+            </Text>
             <View style={styles.durationButtonsContainer}>
               <TouchableOpacity
                 style={styles.durationButton}
@@ -1290,7 +1340,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             </View>
           </View>
         </View>
-        
+
         {/* Accessories */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Accessories</Text>
@@ -1299,14 +1349,24 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               style={[styles.button, styles.accessoryButton]}
               onPress={() => sendCommand({ BZ: "on" })}
             >
-              <FontAwesome name="bell" size={18} color="white" style={styles.buttonIcon} />
+              <FontAwesome
+                name="bell"
+                size={18}
+                color="white"
+                style={styles.buttonIcon}
+              />
               <Text style={styles.buttonText}>Buzzer On</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.accessoryButton]}
               onPress={() => sendCommand({ BZ: "off" })}
             >
-              <FontAwesome name="bell-slash" size={18} color="white" style={styles.buttonIcon} />
+              <FontAwesome
+                name="bell-slash"
+                size={18}
+                color="white"
+                style={styles.buttonIcon}
+              />
               <Text style={styles.buttonText}>Buzzer Off</Text>
             </TouchableOpacity>
           </View>
@@ -1315,19 +1375,29 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               style={[styles.button, styles.accessoryButton]}
               onPress={() => sendCommand({ LED: "on" })}
             >
-              <FontAwesome name="lightbulb-o" size={18} color="white" style={styles.buttonIcon} />
+              <FontAwesome
+                name="lightbulb-o"
+                size={18}
+                color="white"
+                style={styles.buttonIcon}
+              />
               <Text style={styles.buttonText}>LED On</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.accessoryButton]}
               onPress={() => sendCommand({ LED: "off" })}
             >
-              <FontAwesome name="power-off" size={18} color="white" style={styles.buttonIcon} />
+              <FontAwesome
+                name="power-off"
+                size={18}
+                color="white"
+                style={styles.buttonIcon}
+              />
               <Text style={styles.buttonText}>LED Off</Text>
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {/* Toy Control */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Toy Control</Text>
@@ -1347,7 +1417,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             </TouchableOpacity>
           </View>
           <View style={styles.buttonRow}>
-            <MultiClickButton 
+            <MultiClickButton
               text="Triple Click (150ms)"
               onPress={() => simulateMultipleClicks(3, 150)}
               style={styles.multiClickButton}
@@ -1359,52 +1429,54 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             />
           </View>
         </View>
-        
+
         {/* RGB Controls */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>RGB Colors</Text>
           <View style={styles.colorGrid}>
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#FF0000' }]}
+              style={[styles.colorButton, { backgroundColor: "#FF0000" }]}
               onPress={() => sendCommand({ RGB: "(255,0,0)" })}
             />
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#00FF00' }]}
+              style={[styles.colorButton, { backgroundColor: "#00FF00" }]}
               onPress={() => sendCommand({ RGB: "(0,255,0)" })}
             />
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#0000FF' }]}
+              style={[styles.colorButton, { backgroundColor: "#0000FF" }]}
               onPress={() => sendCommand({ RGB: "(0,0,255)" })}
             />
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#FFFF00' }]}
+              style={[styles.colorButton, { backgroundColor: "#FFFF00" }]}
               onPress={() => sendCommand({ RGB: "(255,255,0)" })}
             />
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#00FFFF' }]}
+              style={[styles.colorButton, { backgroundColor: "#00FFFF" }]}
               onPress={() => sendCommand({ RGB: "(0,255,255)" })}
             />
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#FF00FF' }]}
+              style={[styles.colorButton, { backgroundColor: "#FF00FF" }]}
               onPress={() => sendCommand({ RGB: "(255,0,255)" })}
             />
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#FFFFFF' }]}
+              style={[styles.colorButton, { backgroundColor: "#FFFFFF" }]}
               onPress={() => sendCommand({ RGB: "(255,255,255)" })}
             />
             <TouchableOpacity
-              style={[styles.colorButton, { backgroundColor: '#000000' }]}
+              style={[styles.colorButton, { backgroundColor: "#000000" }]}
               onPress={() => sendCommand({ RGB: "(0,0,0)" })}
             />
           </View>
         </View>
-        
+
         {/* Log Display */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Activity Log</Text>
           <View style={styles.logContainer}>
             {logs.map((log, index) => (
-              <Text key={index} style={styles.logText}>{log}</Text>
+              <Text key={index} style={styles.logText}>
+                {log}
+              </Text>
             ))}
           </View>
         </View>
@@ -1417,99 +1489,99 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 12,
-    color: '#333',
+    color: "#333",
   },
   buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginBottom: 8,
   },
   button: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 6,
     minWidth: 100,
-    alignItems: 'center',
+    alignItems: "center",
     marginHorizontal: 4,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
   buttonIcon: {
     marginRight: 5,
   },
   actionButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   stopButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: "#F44336",
   },
   accessoryButton: {
-    backgroundColor: '#9C27B0',
+    backgroundColor: "#9C27B0",
   },
   toyButton: {
-    backgroundColor: '#E91E63',
+    backgroundColor: "#E91E63",
   },
   toyButtonPulse: {
-    backgroundColor: '#C2185B',
+    backgroundColor: "#C2185B",
   },
   multiClickButton: {
-    backgroundColor: '#AA00FF',
+    backgroundColor: "#AA00FF",
   },
   disconnectButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: "#F44336",
   },
   deviceList: {
     marginTop: 16,
   },
   deviceItem: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     padding: 12,
     borderRadius: 6,
     marginBottom: 8,
   },
   deviceName: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   deviceAddress: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   statusContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   statusText: {
-    color: '#666',
+    color: "#666",
   },
   toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 8,
     padding: 8,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 4,
   },
   controlGrid: {
@@ -1519,9 +1591,9 @@ const styles = StyleSheet.create({
     width: 100,
   },
   colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   colorButton: {
     width: 60,
@@ -1529,96 +1601,96 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     margin: 8,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
   },
   logContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 4,
     padding: 8,
     maxHeight: 200,
   },
   logText: {
     fontSize: 12,
-    fontFamily: 'monospace',
-    color: '#333',
+    fontFamily: "monospace",
+    color: "#333",
     marginBottom: 2,
   },
   // Voice control related styles
   voiceSection: {
-    backgroundColor: '#EFF8FF',
+    backgroundColor: "#EFF8FF",
     borderWidth: 1,
-    borderColor: '#2196F3',
+    borderColor: "#2196F3",
   },
   apiButton: {
-    backgroundColor: '#673AB7',
+    backgroundColor: "#673AB7",
   },
   voiceStatusContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 12,
   },
   statusIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.05)",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
   },
   statusIndicatorText: {
     marginLeft: 6,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   transcriptContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     padding: 12,
     borderRadius: 6,
     marginVertical: 8,
   },
   label: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
-    color: '#333',
+    color: "#333",
   },
   transcript: {
-    color: '#555',
+    color: "#555",
   },
   responseContainer: {
-    backgroundColor: '#EFF7FF',
+    backgroundColor: "#EFF7FF",
     padding: 12,
     borderRadius: 6,
     marginVertical: 8,
   },
   speakingContainer: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     borderWidth: 1,
-    borderColor: '#2196F3',
+    borderColor: "#2196F3",
   },
   response: {
-    color: '#333',
+    color: "#333",
   },
   pushToTalkButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     width: 70,
     height: 70,
     borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
     marginVertical: 16,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
   pushToTalkButtonActive: {
-    backgroundColor: '#F44336',
+    backgroundColor: "#F44336",
   },
   explanationText: {
     fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-    textAlign: 'center',
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
   },
   // Speed and duration setting styles
   settingsContainer: {
@@ -1626,47 +1698,47 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 8,
     marginTop: 12,
-    color: '#333',
+    color: "#333",
   },
   speedButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 16,
   },
   speedButton: {
-    backgroundColor: '#FF9800',
+    backgroundColor: "#FF9800",
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 6,
     flex: 1,
     marginHorizontal: 4,
-    alignItems: 'center',
+    alignItems: "center",
   },
   speedButtonActive: {
-    backgroundColor: '#E65100',
+    backgroundColor: "#E65100",
     borderWidth: 2,
-    borderColor: '#FFF',
+    borderColor: "#FFF",
   },
   speedButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: "#FFF",
+    fontWeight: "bold",
   },
   durationButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
   },
   durationButton: {
-    backgroundColor: '#3F51B5',
+    backgroundColor: "#3F51B5",
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 6,
     marginRight: 8,
     marginBottom: 8,
     minWidth: 70,
-    alignItems: 'center',
+    alignItems: "center",
   },
 });
