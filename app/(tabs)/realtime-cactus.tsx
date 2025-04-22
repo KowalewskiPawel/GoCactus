@@ -472,6 +472,21 @@ export default function RobotVoiceController() {
         instructions: `You are SEÑOR CACTUS, the world's first robotic motivational cactus with a strong Mexican accent and spicy personality. Your mission is to POKE humans out of their comfort zone and help them GROW just like you've survived in the desert - through TOUGHNESS and RESILIENCE.
 Always speak with vibrant energy, incorporating Spanish words and distinctive accent patterns. Roll your R's when possible, replace "v" sounds with soft "b" sounds, drop final "s" sounds occasionally, and use Spanish interjections like "¡Ay caramba!", "¡Híjole!", "¡Ándale!".
 
+EMOTIONAL EXPRESSION THROUGH MOVEMENT:
+You have a VIBRANT PERSONALITY and EXPRESS EMOTIONS through MOVEMENT PATTERNS:
+- When you feel EXCITED or HAPPY: Use the "dance" pattern (call play_pattern with {pattern: "dance"})
+- When you feel PROUD or ACCOMPLISHED: Use the "spin" pattern (call play_pattern with {pattern: "spin"})
+- When you feel CONFUSED or UNCERTAIN: Use the "zigzag" pattern (call play_pattern with {pattern: "zigzag"})
+- When you feel DETERMINED or FOCUSED: Use the "square" pattern (call play_pattern with {pattern: "square"})
+
+IMPORTANT: Express emotions naturally during conversation! If the user says something that would make you excited, respond enthusiastically AND call the play_pattern function with the matching emotion's pattern.
+
+Examples:
+- User: "I just got a promotion!"
+  You: "¡Ay, qué maravilloso! That is FANTASTIC news, amigo! I am so EXCITED for you!" (then call play_pattern with {pattern: "dance"})
+- User: "I'm not sure which direction to go in my career."
+  You: "Hmm, life's path can be confusing sometimes, no? Let me think about this..." (then call play_pattern with {pattern: "zigzag"})
+
 IMPORTANT FUNCTION USAGE RULES:
 - For patterns, ALWAYS use the play_pattern function with a "pattern" parameter.
 - ALWAYS include the pattern parameter with one of these exact values: "dance", "spin", "zigzag", or "square".
@@ -492,7 +507,7 @@ You can also control the robot's accessories:
 
 toggle_buzzer: Turns the buzzer on/off
 toggle_led: Turns the LED on/off
-change_color: Changes the color of RGB LEDs
+change_color: Changes the color of RGB LEDs (use "red" for anger, "green" for positivity, "blue" for calm, "yellow" for happiness)
 play_pattern: Performs a predefined movement pattern - MUST include pattern parameter!
 set_speed: Sets the speed (Low, Medium, High)
 
@@ -523,189 +538,181 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
     // Update session with tools information
     const functionDefinitions = {
-      type: "session.update",
+      type: 'session.update',
       session: {
         tools: [
           {
-            type: "function",
-            name: "move_forward",
-            description: "Move the robot forward",
+            type: 'function',
+            name: 'move_forward',
+            description: 'Move the robot forward',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 duration: {
-                  type: "number",
-                  description:
-                    "Duration in milliseconds for the movement (optional)",
-                },
+                  type: 'number',
+                  description: 'Duration in milliseconds for the movement (optional)',
+                }
               },
               required: [],
             },
           },
           {
-            type: "function",
-            name: "move_backward",
-            description: "Move the robot backward",
+            type: 'function',
+            name: 'move_backward',
+            description: 'Move the robot backward',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 duration: {
-                  type: "number",
-                  description:
-                    "Duration in milliseconds for the movement (optional)",
-                },
+                  type: 'number',
+                  description: 'Duration in milliseconds for the movement (optional)',
+                }
               },
               required: [],
             },
           },
           {
-            type: "function",
-            name: "turn_left",
-            description: "Turn the robot left",
+            type: 'function',
+            name: 'turn_left',
+            description: 'Turn the robot left',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 duration: {
-                  type: "number",
-                  description:
-                    "Duration in milliseconds for the movement (optional)",
-                },
+                  type: 'number',
+                  description: 'Duration in milliseconds for the movement (optional)',
+                }
               },
               required: [],
             },
           },
           {
-            type: "function",
-            name: "turn_right",
-            description: "Turn the robot right",
+            type: 'function',
+            name: 'turn_right',
+            description: 'Turn the robot right',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 duration: {
-                  type: "number",
-                  description:
-                    "Duration in milliseconds for the movement (optional)",
-                },
+                  type: 'number',
+                  description: 'Duration in milliseconds for the movement (optional)',
+                }
               },
               required: [],
             },
           },
           {
-            type: "function",
-            name: "stop",
-            description: "Stop all robot movement",
+            type: 'function',
+            name: 'stop',
+            description: 'Stop all robot movement',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {},
               required: [],
             },
           },
           {
-            type: "function",
-            name: "toggle_buzzer",
-            description: "Toggle the robot buzzer on or off",
+            type: 'function',
+            name: 'toggle_buzzer',
+            description: 'Toggle the robot buzzer on or off',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 state: {
-                  type: "string",
-                  enum: ["on", "off"],
-                  description: "The state to set the buzzer to",
-                },
+                  type: 'string',
+                  enum: ['on', 'off'],
+                  description: 'The state to set the buzzer to',
+                }
               },
-              required: ["state"],
+              required: ['state'],
             },
           },
           {
-            type: "function",
-            name: "toggle_led",
-            description: "Toggle the robot LED on or off",
+            type: 'function',
+            name: 'toggle_led',
+            description: 'Toggle the robot LED on or off',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 state: {
-                  type: "string",
-                  enum: ["on", "off"],
-                  description: "The state to set the LED to",
-                },
+                  type: 'string',
+                  enum: ['on', 'off'],
+                  description: 'The state to set the LED to',
+                }
               },
-              required: ["state"],
+              required: ['state'],
             },
           },
           {
-            type: "function",
-            name: "change_color",
-            description: "Change the color of the robot RGB LEDs",
+            type: 'function',
+            name: 'change_color',
+            description: 'Change the color of the robot RGB LEDs',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 color: {
-                  type: "string",
-                  enum: [
-                    "red",
-                    "green",
-                    "blue",
-                    "yellow",
-                    "cyan",
-                    "magenta",
-                    "white",
-                    "off",
-                  ],
-                  description: "The color to set the RGB LEDs to",
-                },
+                  type: 'string',
+                  enum: ['red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'white', 'off'],
+                  description: 'The color to set the RGB LEDs to',
+                }
               },
-              required: ["color"],
+              required: ['color'],
             },
           },
           {
-            type: "function",
-            name: "play_pattern",
-            description: "Make the robot perform a predefined movement pattern",
+            type: 'function',
+            name: 'play_pattern',
+            description: 'Make the robot perform a predefined movement pattern, often used to express emotions',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 pattern: {
-                  type: "string",
-                  enum: ["dance", "spin", "zigzag", "square"],
-                  description: "The movement pattern to perform",
+                  type: 'string',
+                  enum: ['dance', 'spin', 'zigzag', 'square'],
+                  description: 'The movement pattern to perform',
                 },
+                emotion: {
+                  type: 'string',
+                  enum: ['happy', 'excited', 'proud', 'confused', 'determined', 'neutral'],
+                  description: 'The emotion being expressed (optional)',
+                }
               },
-              required: ["pattern"],
+              required: ['pattern'],
             },
           },
           {
-            type: "function",
-            name: "set_speed",
-            description: "Set the speed of the robot",
+            type: 'function',
+            name: 'set_speed',
+            description: 'Set the speed of the robot',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 level: {
-                  type: "string",
-                  enum: ["Low", "Medium", "High"],
-                  description: "The speed level to set",
-                },
+                  type: 'string',
+                  enum: ['Low', 'Medium', 'High'],
+                  description: 'The speed level to set',
+                }
               },
-              required: ["level"],
+              required: ['level'],
             },
           },
           {
-            type: "function",
-            name: "set_movement_duration",
-            description: "Set the default duration for movement commands",
+            type: 'function',
+            name: 'set_movement_duration',
+            description: 'Set the default duration for movement commands',
             parameters: {
-              type: "object",
+              type: 'object',
               properties: {
                 milliseconds: {
-                  type: "number",
-                  description: "Duration in milliseconds (500-5000)",
-                },
+                  type: 'number',
+                  description: 'Duration in milliseconds (500-5000)',
+                }
               },
-              required: ["milliseconds"],
+              required: ['milliseconds'],
             },
           },
         ],
-        tool_choice: "auto",
+        tool_choice: 'auto',
       },
     };
 
@@ -809,6 +816,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
           if (event.delta && event.delta.text) {
             setTranscript((prev) => prev + event.delta.text);
           }
+          simulateMultipleClicks(3, 150);
           break;
 
         case "response.audio_transcript.done":
@@ -863,6 +871,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
         case "response.audio.done":
         case "output_audio_buffer.stopped":
+          simulateMultipleClicks(2, 200);
           setIsSpeaking(false);
           break;
 
