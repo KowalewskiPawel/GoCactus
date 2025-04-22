@@ -23,22 +23,22 @@ import {
 } from "react-native-webrtc-web-shim";
 
 // API endpoint for getting ephemeral tokens - should be your server endpoint
-const TOKEN_ENDPOINT = "/api/get-realtime-token";
+const TOKEN_ENDPOINT =
+  "/api/get-realtime-token";
 
 export default function RobotVoiceController() {
   // Bluetooth connection states
   const [isConnected, setIsConnected] = useState(false);
-  const [devices, setDevices] = useState<any[]>([]);
+  const [devices, setDevices] = useState([]);
   const [connecting, setConnecting] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState<any>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [logs, setLogs] = useState([]);
 
   // Control states
   const [speed, setSpeed] = useState(50); // Default speed 50%
   const [steeringAngle, setSteeringAngle] = useState(20); // Default turning speed
   const [autonomousMode, setAutonomousMode] = useState(false);
-  const [autonomousInterval, setAutonomousIntervalRef] =
-    useState<NodeJS.Timeout | null>(null);
+  const [autonomousInterval, setAutonomousIntervalRef] = useState(null);
 
   // WebRTC/Realtime API states
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
@@ -53,10 +53,11 @@ export default function RobotVoiceController() {
   const [currentSpeed, setCurrentSpeed] = useState("Medium"); // Low, Medium, High
 
   // WebRTC references
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const dataChannelRef = useRef<any>(null);
-  const audioStreamRef = useRef<MediaStream | null>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const peerConnectionRef = useRef(null);
+  const dataChannelRef = useRef(null);
+  const audioStreamRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const isFunctionExecuting = useRef(false);
 
   useEffect(() => {
     // Request permissions on component mount
@@ -90,7 +91,7 @@ export default function RobotVoiceController() {
           "Bluetooth permissions are required to control your robot."
         );
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error requesting permissions:", error);
       addLog(`Permission error: ${error.message}`);
     }
@@ -104,14 +105,14 @@ export default function RobotVoiceController() {
       const bondedDevices = await RNBluetoothClassic.getBondedDevices();
       setDevices(bondedDevices);
       addLog(`Found ${bondedDevices.length} paired devices`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error scanning for devices:", error);
       addLog(`Scan error: ${error.message}`);
       Alert.alert("Scan Error", error.message);
     }
   };
 
-  const connectToDevice = async (device: any) => {
+  const connectToDevice = async (device) => {
     try {
       setConnecting(true);
       addLog(`Connecting to ${device.name}...`);
@@ -121,7 +122,7 @@ export default function RobotVoiceController() {
       setSelectedDevice(connected);
       setIsConnected(true);
       addLog(`Connected to ${device.name}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error connecting to device:", error);
       addLog(`Connection error: ${error.message}`);
       Alert.alert("Connection Error", error.message);
@@ -145,15 +146,15 @@ export default function RobotVoiceController() {
         setIsConnected(false);
         addLog("Disconnected");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error disconnecting from device:", error);
       addLog(`Disconnect error: ${error.message}`);
     }
   };
 
-  const sendCommand = async (command: Record<string, string>) => {
+  const sendCommand = async (command) => {
     if (!isConnected || !selectedDevice) {
-      Alert.alert("Not Connected", "Please connect to your robot first.");
+      addLog("Command failed: Not connected to robot");
       return false;
     }
 
@@ -165,7 +166,7 @@ export default function RobotVoiceController() {
         jsonCommand
       );
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error sending command:", error);
       addLog(`Send error: ${error.message}`);
       return false;
@@ -173,55 +174,86 @@ export default function RobotVoiceController() {
   };
 
   // Movement Functions for WebRTC Control with adjustable duration
-  const moveRobot = (direction: string, duration?: number) => {
+  const moveRobot = (direction, duration) => {
     // Use provided duration or default moveDuration
     const moveTime = duration || moveDuration;
 
     addLog(`Moving ${direction} for ${moveTime}ms at ${currentSpeed} speed`);
 
-    switch (direction) {
-      case "forward":
-        sendCommand({ Forward: "Down" });
-        setTimeout(() => sendCommand({ Forward: "Up" }), moveTime);
-        break;
-      case "backward":
-        sendCommand({ Backward: "Down" });
-        setTimeout(() => sendCommand({ Backward: "Up" }), moveTime);
-        break;
-      case "left":
-        sendCommand({ Left: "Down" });
-        setTimeout(() => sendCommand({ Left: "Up" }), moveTime);
-        break;
-      case "right":
-        sendCommand({ Right: "Down" });
-        setTimeout(() => sendCommand({ Right: "Up" }), moveTime);
-        break;
-      case "stop":
-        sendCommand({ Forward: "Up" });
-        sendCommand({ Backward: "Up" });
-        sendCommand({ Left: "Up" });
-        sendCommand({ Right: "Up" });
-        break;
-    }
+    return new Promise(async (resolve) => {
+      try {
+        switch (direction) {
+          case "forward":
+            await sendCommand({ Forward: "Down" });
+            setTimeout(async () => {
+              await sendCommand({ Forward: "Up" });
+              resolve();
+            }, moveTime);
+            break;
+          case "backward":
+            await sendCommand({ Backward: "Down" });
+            setTimeout(async () => {
+              await sendCommand({ Backward: "Up" });
+              resolve();
+            }, moveTime);
+            break;
+          case "left":
+            await sendCommand({ Left: "Down" });
+            setTimeout(async () => {
+              await sendCommand({ Left: "Up" });
+              resolve();
+            }, moveTime);
+            break;
+          case "right":
+            await sendCommand({ Right: "Down" });
+            setTimeout(async () => {
+              await sendCommand({ Right: "Up" });
+              resolve();
+            }, moveTime);
+            break;
+          case "stop":
+            await sendCommand({ Forward: "Up" });
+            await sendCommand({ Backward: "Up" });
+            await sendCommand({ Left: "Up" });
+            await sendCommand({ Right: "Up" });
+            resolve();
+            break;
+          default:
+            addLog(`Unknown direction: ${direction}`);
+            resolve();
+        }
+      } catch (error) {
+        addLog(`Move error: ${error.message}`);
+        resolve();
+      }
+    });
   };
 
   // Set speed on the robot
-  const setSpeedLevel = async (speedLevel: string) => {
+  const setSpeedLevel = async (speedLevel) => {
     setCurrentSpeed(speedLevel);
 
-    switch (speedLevel) {
-      case "Low":
-        await sendCommand({ Low: "Down" });
-        addLog("Speed set to Low");
-        break;
-      case "Medium":
-        await sendCommand({ Medium: "Down" });
-        addLog("Speed set to Medium");
-        break;
-      case "High":
-        await sendCommand({ High: "Down" });
-        addLog("Speed set to High");
-        break;
+    try {
+      switch (speedLevel) {
+        case "Low":
+          await sendCommand({ Low: "Down" });
+          addLog("Speed set to Low");
+          break;
+        case "Medium":
+          await sendCommand({ Medium: "Down" });
+          addLog("Speed set to Medium");
+          break;
+        case "High":
+          await sendCommand({ High: "Down" });
+          addLog("Speed set to High");
+          break;
+        default:
+          addLog(`Unknown speed level: ${speedLevel}`);
+      }
+      return true;
+    } catch (error) {
+      addLog(`Speed setting error: ${error.message}`);
+      return false;
     }
   };
 
@@ -278,7 +310,8 @@ export default function RobotVoiceController() {
     }
   };
 
-  const addLog = (message: string) => {
+  const addLog = (message) => {
+    console.log(message); // Always log to console for debugging
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prevLogs) => [
       `[${timestamp}] ${message}`,
@@ -312,7 +345,7 @@ export default function RobotVoiceController() {
         remoteAudioRef.current = audioEl;
 
         pc.ontrack = (event) => {
-          remoteAudioRef.current!.srcObject = event.streams[0];
+          remoteAudioRef.current.srcObject = event.streams[0];
           addLog("Received remote audio track");
         };
       } else {
@@ -392,7 +425,7 @@ export default function RobotVoiceController() {
       await pc.setRemoteDescription(answer);
       setIsRealtimeConnected(true);
       addLog("Connected to Realtime API");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error connecting to Realtime API:", error);
       addLog(`Realtime API connection error: ${error.message}`);
       Alert.alert("Connection Error", error.message);
@@ -427,7 +460,10 @@ export default function RobotVoiceController() {
 
   // Send system message to set up the assistant
   const sendSystemMessage = () => {
-    if (!dataChannelRef.current) return;
+    if (!dataChannelRef.current) {
+      addLog("Cannot send system message: data channel not ready");
+      return;
+    }
 
     // Use session.update for system message according to API requirements
     const systemMessage = {
@@ -435,28 +471,30 @@ export default function RobotVoiceController() {
       session: {
         instructions: `You are SEÑOR CACTUS, the world's first robotic motivational cactus with a strong Mexican accent and spicy personality. Your mission is to POKE humans out of their comfort zone and help them GROW just like you've survived in the desert - through TOUGHNESS and RESILIENCE.
 Always speak with vibrant energy, incorporating Spanish words and distinctive accent patterns. Roll your R's when possible, replace "v" sounds with soft "b" sounds, drop final "s" sounds occasionally, and use Spanish interjections like "¡Ay caramba!", "¡Híjole!", "¡Ándale!".
+
+IMPORTANT FUNCTION USAGE RULES:
+- For patterns, ALWAYS use the play_pattern function with a "pattern" parameter.
+- ALWAYS include the pattern parameter with one of these exact values: "dance", "spin", "zigzag", or "square".
+- For example, if the user asks for a zigzag pattern, call play_pattern with {pattern: "zigzag"}.
+
+YOU MUST INCLUDE THE PARAMETER with the function call.
+You cannot call play_pattern without including a pattern parameter.
+
 You can control this robot's movement using these functions:
 
-move_forward: Makes the robot move forward (optional duration parameter in milliseconds)
-move_backward: Makes the robot move backward (optional duration parameter in milliseconds)
-turn_left: Makes the robot turn left (optional duration parameter in milliseconds)
-turn_right: Makes the robot turn right (optional duration parameter in milliseconds)
+move_forward: Makes the robot move forward briefly
+move_backward: Makes the robot move backward briefly
+turn_left: Makes the robot turn left
+turn_right: Makes the robot turn right
 stop: Stops all robot movement
 
 You can also control the robot's accessories:
 
-toggle_buzzer: Turns the buzzer on/off (requires 'state' parameter: 'on' or 'off')
-toggle_led: Turns the LED on/off (requires 'state' parameter: 'on' or 'off')
-change_color: Changes the color of RGB LEDs (requires 'color' parameter: 'red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'white', or 'off')
-play_pattern: Performs a predefined movement pattern (requires 'pattern' parameter: 'dance', 'spin', 'zigzag', or 'square')
-set_speed: Sets the speed (requires 'level' parameter: 'Low', 'Medium', 'High')
-set_movement_duration: Sets the default duration for movement commands (requires 'milliseconds' parameter between 500-5000)
-
-IMPORTANT: When a user asks you to move the robot in any way, you MUST use these functions. For example:
-
-If the user says "move forward" or "go forward", call the move_forward function
-If the user says "move back" or "go backward", call the move_backward function
-If the user says "turn left", call the turn_left function
+toggle_buzzer: Turns the buzzer on/off
+toggle_led: Turns the LED on/off
+change_color: Changes the color of RGB LEDs
+play_pattern: Performs a predefined movement pattern - MUST include pattern parameter!
+set_speed: Sets the speed (Low, Medium, High)
 
 Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like "¡Ándale! I am moving forward for you, amigo!" or "¡Híjole! Turning to the left now, compadre!"`,
         voice: "ash",
@@ -470,7 +508,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
       // Also send function definitions
       sendFunctionDefinitions();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error sending system message:", error);
       addLog(`System message error: ${error.message}`);
     }
@@ -478,7 +516,10 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
   // Send function definitions
   const sendFunctionDefinitions = () => {
-    if (!dataChannelRef.current) return;
+    if (!dataChannelRef.current) {
+      addLog("Cannot send function definitions: data channel not ready");
+      return;
+    }
 
     // Update session with tools information
     const functionDefinitions = {
@@ -671,7 +712,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
     try {
       dataChannelRef.current.send(JSON.stringify(functionDefinitions));
       addLog("Sent function definitions");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error sending function definitions:", error);
       addLog(`Function definition error: ${error.message}`);
     }
@@ -693,30 +734,55 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
   // Start listening for user input
   const startListening = () => {
-    setIsListening(true);
-    addLog("Started listening");
+    if (!dataChannelRef.current) {
+      addLog("Cannot start listening: data channel not ready");
+      return;
+    }
+
+    try {
+      const message = {
+        type: "audio_input",
+        encoding: "audio/webm;codecs=opus",
+      };
+      dataChannelRef.current.send(JSON.stringify(message));
+      setIsListening(true);
+      addLog("Started listening");
+    } catch (error) {
+      console.error("Error starting listening:", error);
+      addLog(`Listen error: ${error.message}`);
+    }
   };
 
   // Stop listening for user input and get a response
   const stopListening = () => {
-    if (!dataChannelRef.current) return;
+    if (!dataChannelRef.current) {
+      addLog("Cannot stop listening: data channel not ready");
+      return;
+    }
 
     try {
+      // First send the audio input buffer complete message
+      const audioComplete = {
+        type: "audio_input_buffer_complete",
+      };
+      dataChannelRef.current.send(JSON.stringify(audioComplete));
+
+      // Then request a response
       const createResponse = {
         type: "response.create",
       };
-
       dataChannelRef.current.send(JSON.stringify(createResponse));
+
       setIsListening(false);
       addLog("Requested response");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error requesting response:", error);
       addLog(`Response request error: ${error.message}`);
     }
   };
 
   // Handle events from Realtime API
-  const handleRealtimeEvent = (eventData: string) => {
+  const handleRealtimeEvent = (eventData) => {
     try {
       const event = JSON.parse(eventData);
       console.log("Event:", event.type, event);
@@ -743,7 +809,10 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
           if (event.delta && event.delta.text) {
             setTranscript((prev) => prev + event.delta.text);
           }
-          simulateMultipleClicks(3, 150);
+          break;
+
+        case "response.audio_transcript.done":
+          addLog(`Transcript complete: ${event.transcript}`);
           break;
 
         // Text response events
@@ -757,6 +826,11 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
         case "response.done":
           addLog("Response complete");
 
+          // Reset transcript for next interaction
+          setTimeout(() => {
+            setTranscript("");
+          }, 5000);
+
           // Check if there's a function call in the output
           if (
             event.response &&
@@ -764,11 +838,11 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
             event.response.output.length > 0
           ) {
             const functionCalls = event.response.output.filter(
-              (output: any) => output.type === "function_call"
+              (output) => output.type === "function_call"
             );
 
             if (functionCalls.length > 0) {
-              functionCalls.forEach((functionCall: any) => {
+              functionCalls.forEach((functionCall) => {
                 const functionName = functionCall.name;
                 const callId = functionCall.call_id;
                 const args = functionCall.args || {};
@@ -778,8 +852,6 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               });
             }
           }
-
-          setIsSpeaking(false);
           break;
 
         // Audio events
@@ -791,7 +863,6 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
 
         case "response.audio.done":
         case "output_audio_buffer.stopped":
-          simulateMultipleClicks(2, 200);
           setIsSpeaking(false);
           break;
 
@@ -802,18 +873,14 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
           Alert.alert("API Error", event.message);
           break;
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error parsing event:", error);
       addLog(`Event parsing error: ${error.message}`);
     }
   };
 
   // Handle function calls from Realtime API
-  const handleFunctionCall = (
-    functionName: string,
-    callId: string,
-    args: any
-  ) => {
+  const handleFunctionCall = async (functionName, callId, args) => {
     if (!functionEnabled) {
       addLog(`Function call ignored (disabled): ${functionName}`);
       sendFunctionResponse(callId, {
@@ -823,6 +890,17 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
       return;
     }
 
+    // Check if a function is already executing
+    if (isFunctionExecuting.current) {
+      addLog(
+        `Another function is already executing, queueing: ${functionName}`
+      );
+      // Wait a bit and then try again
+      setTimeout(() => handleFunctionCall(functionName, callId, args), 2000);
+      return;
+    }
+
+    isFunctionExecuting.current = true;
     addLog(
       `Executing function: ${functionName} with args: ${JSON.stringify(args)}`
     );
@@ -832,37 +910,37 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
     try {
       switch (functionName) {
         case "move_forward":
-          moveRobot("forward");
+          await moveRobot("forward", args.duration);
           break;
 
         case "move_backward":
-          moveRobot("backward");
+          await moveRobot("backward", args.duration);
           break;
 
         case "turn_left":
-          moveRobot("left");
+          await moveRobot("left", args.duration);
           break;
 
         case "turn_right":
-          moveRobot("right");
+          await moveRobot("right", args.duration);
           break;
 
         case "stop":
-          moveRobot("stop");
+          await moveRobot("stop");
           break;
 
         case "toggle_buzzer":
           const buzzerState = args.state || "on";
-          sendCommand({ BZ: buzzerState });
+          await sendCommand({ BZ: buzzerState });
           break;
 
         case "toggle_led":
           const ledState = args.state || "on";
-          sendCommand({ LED: ledState });
+          await sendCommand({ LED: ledState });
           break;
 
         case "change_color":
-          const colorMap: Record<string, string> = {
+          const colorMap = {
             red: "(255,0,0)",
             green: "(0,255,0)",
             blue: "(0,0,255)",
@@ -874,29 +952,84 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
           };
 
           const colorValue = colorMap[args.color] || "(255,255,255)";
-          sendCommand({ RGB: colorValue });
+          await sendCommand({ RGB: colorValue });
           break;
 
         case "play_pattern":
-          executePattern(args.pattern);
+          // IMPORTANT FIX: Handle missing pattern parameter
+          // If pattern is missing, try to extract it from the response
+          let patternToUse = args.pattern;
+
+          // If no pattern was provided, use a default pattern
+          if (!patternToUse) {
+            addLog('Pattern missing in args, defaulting to "dance"');
+            // Look at the response text to try to determine what pattern the user wanted
+            if (response.toLowerCase().includes("zigzag")) {
+              patternToUse = "zigzag";
+            } else if (response.toLowerCase().includes("spin")) {
+              patternToUse = "spin";
+            } else if (response.toLowerCase().includes("square")) {
+              patternToUse = "square";
+            } else {
+              // Default fallback
+              patternToUse = "dance";
+            }
+            addLog(`Auto-detected pattern: ${patternToUse}`);
+          }
+
+          // Execute the pattern
+          await executePattern(patternToUse);
+          break;
+
+        case "set_speed":
+          if (args.level) {
+            await setSpeedLevel(args.level);
+          } else {
+            addLog("Missing speed level parameter");
+            result = { success: false, error: "Missing speed level parameter" };
+          }
+          break;
+
+        case "set_movement_duration":
+          if (args.milliseconds) {
+            // Validate and set movement duration
+            const ms = Number(args.milliseconds);
+            if (ms >= 500 && ms <= 5000) {
+              setMoveDuration(ms);
+              addLog(`Set movement duration to ${ms}ms`);
+            } else {
+              addLog("Invalid duration (must be 500-5000ms)");
+              result = { success: false, error: "Invalid duration range" };
+            }
+          } else {
+            addLog("Missing milliseconds parameter");
+            result = {
+              success: false,
+              error: "Missing milliseconds parameter",
+            };
+          }
           break;
 
         default:
           addLog(`Unknown function: ${functionName}`);
-          result = { success: false };
+          result = { success: false, error: "Unknown function" };
       }
-
+    } catch (error) {
+      console.error(`Error executing function ${functionName}:`, error);
+      result = { success: false, error: error.message };
+    } finally {
       // Send function response
       sendFunctionResponse(callId, result);
-    } catch (error: any) {
-      console.error(`Error executing function ${functionName}:`, error);
-      sendFunctionResponse(callId, { success: false, error: error.message });
+      isFunctionExecuting.current = false;
     }
   };
 
   // Send function response back to Realtime API
-  const sendFunctionResponse = (callId: string, result: any) => {
-    if (!dataChannelRef.current) return;
+  const sendFunctionResponse = (callId, result) => {
+    if (!dataChannelRef.current) {
+      addLog("Cannot send function response: data channel not ready");
+      return;
+    }
 
     try {
       const responseMessage = {
@@ -909,83 +1042,95 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
       };
 
       dataChannelRef.current.send(JSON.stringify(responseMessage));
-      addLog("Sent function response");
-    } catch (error: any) {
+      addLog(`Sent function response: ${JSON.stringify(result)}`);
+    } catch (error) {
       console.error("Error sending function response:", error);
       addLog(`Function response error: ${error.message}`);
     }
   };
 
   // Execute predefined movement patterns
-  const executePattern = async (pattern: string) => {
+  const executePattern = async (pattern) => {
     addLog(`Executing pattern: ${pattern}`);
 
-    switch (pattern) {
-      case "dance":
-        // Dance pattern
-        for (let i = 0; i < 2; i++) {
-          await sendCommand({ Left: "Down" });
-          await new Promise((r) => setTimeout(r, 200));
-          await sendCommand({ Left: "Up" });
-
-          await sendCommand({ Right: "Down" });
-          await new Promise((r) => setTimeout(r, 200));
-          await sendCommand({ Right: "Up" });
-        }
-
-        await sendCommand({ Forward: "Down" });
-        await new Promise((r) => setTimeout(r, 300));
-        await sendCommand({ Forward: "Up" });
-
-        await sendCommand({ Backward: "Down" });
-        await new Promise((r) => setTimeout(r, 300));
-        await sendCommand({ Backward: "Up" });
-        break;
-
-      case "spin":
-        // Do a 360-degree turn
-        await sendCommand({ Right: "Down" });
-        setTimeout(async () => {
-          await sendCommand({ Right: "Up" });
-        }, 2000);
-        break;
-
-      case "zigzag":
-        // Make a zigzag pattern
-        for (let i = 0; i < 2; i++) {
+    try {
+      switch (pattern) {
+        case "dance":
+          // Dance pattern
           await sendCommand({ Forward: "Down" });
-          await new Promise((r) => setTimeout(r, 400));
-          await sendCommand({ Forward: "Up" });
-
-          await sendCommand({ Right: "Down" });
           await new Promise((r) => setTimeout(r, 300));
-          await sendCommand({ Right: "Up" });
-
-          await sendCommand({ Forward: "Down" });
-          await new Promise((r) => setTimeout(r, 400));
           await sendCommand({ Forward: "Up" });
 
-          await sendCommand({ Left: "Down" });
+          await sendCommand({ Backward: "Down" });
           await new Promise((r) => setTimeout(r, 300));
-          await sendCommand({ Left: "Up" });
-        }
-        break;
+          await sendCommand({ Backward: "Up" });
 
-      case "square":
-        // Square pattern
-        for (let i = 0; i < 4; i++) {
-          await sendCommand({ Forward: "Down" });
-          await new Promise((r) => setTimeout(r, 800));
-          await sendCommand({ Forward: "Up" });
+          for (let i = 0; i < 2; i++) {
+            await sendCommand({ Left: "Down" });
+            await new Promise((r) => setTimeout(r, 200));
+            await sendCommand({ Left: "Up" });
 
+            await sendCommand({ Right: "Down" });
+            await new Promise((r) => setTimeout(r, 200));
+            await sendCommand({ Right: "Up" });
+          }
+
+          addLog("Dance pattern completed");
+          break;
+
+        case "spin":
+          // Do a 360-degree turn
           await sendCommand({ Right: "Down" });
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 2000));
           await sendCommand({ Right: "Up" });
-        }
-        break;
+          addLog("Spin pattern completed");
+          break;
 
-      default:
-        addLog(`Unknown pattern: ${pattern}`);
+        case "zigzag":
+          // Make a zigzag pattern
+          for (let i = 0; i < 2; i++) {
+            await sendCommand({ Forward: "Down" });
+            await new Promise((r) => setTimeout(r, 400));
+            await sendCommand({ Forward: "Up" });
+
+            await sendCommand({ Right: "Down" });
+            await new Promise((r) => setTimeout(r, 300));
+            await sendCommand({ Right: "Up" });
+
+            await sendCommand({ Forward: "Down" });
+            await new Promise((r) => setTimeout(r, 400));
+            await sendCommand({ Forward: "Up" });
+
+            await sendCommand({ Left: "Down" });
+            await new Promise((r) => setTimeout(r, 300));
+            await sendCommand({ Left: "Up" });
+          }
+          addLog("Zigzag pattern completed");
+          break;
+
+        case "square":
+          // Square pattern
+          for (let i = 0; i < 4; i++) {
+            await sendCommand({ Forward: "Down" });
+            await new Promise((r) => setTimeout(r, 800));
+            await sendCommand({ Forward: "Up" });
+
+            await sendCommand({ Right: "Down" });
+            await new Promise((r) => setTimeout(r, 400));
+            await sendCommand({ Right: "Up" });
+          }
+          addLog("Square pattern completed");
+          break;
+
+        default:
+          addLog(`Unknown pattern: ${pattern}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`Error executing pattern ${pattern}:`, error);
+      addLog(`Pattern error: ${error.message}`);
+      return false;
     }
   };
 
@@ -1019,7 +1164,7 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
         }
       }
       addLog(`Completed ${clickCount} clicks sequence`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error in click sequence:", error);
       addLog(`Click sequence error: ${error.message}`);
     }
@@ -1264,6 +1409,37 @@ Always SPEAK ENGLISH and confirm verbally when you've made the robot move, like 
               </TouchableOpacity>
               <View style={styles.spacer} />
             </View>
+          </View>
+        </View>
+
+        {/* Pattern Testing Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Test Patterns</Text>
+          <View style={styles.patternButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.patternButton]}
+              onPress={() => executePattern("dance")}
+            >
+              <Text style={styles.buttonText}>Dance</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.patternButton]}
+              onPress={() => executePattern("spin")}
+            >
+              <Text style={styles.buttonText}>Spin</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.patternButton]}
+              onPress={() => executePattern("zigzag")}
+            >
+              <Text style={styles.buttonText}>Zigzag</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.patternButton]}
+              onPress={() => executePattern("square")}
+            >
+              <Text style={styles.buttonText}>Square</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1691,6 +1867,19 @@ const styles = StyleSheet.create({
     color: "#666",
     fontStyle: "italic",
     textAlign: "center",
+  },
+  // Pattern test buttons
+  patternButtonsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  patternButton: {
+    backgroundColor: "#FF5722",
+    marginBottom: 8,
+    flex: 1,
+    minWidth: "45%",
+    marginHorizontal: 4,
   },
   // Speed and duration setting styles
   settingsContainer: {
